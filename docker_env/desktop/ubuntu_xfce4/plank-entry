@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Exec=plank
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Name=Plank
+Comment=GNOME-like dock

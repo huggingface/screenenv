@@ -1,0 +1,173 @@
+FROM ubuntu:22.04
+
+# Environment variables
+ENV DEBIAN_FRONTEND=noninteractive \
+    DISPLAY=:1 \
+    LANG=en_US.UTF-8 \
+    LANGUAGE=en_US:en \
+    LC_ALL=en_US.UTF-8 \
+    DBUS_STARTER_BUS_TYPE="session" \
+    DBUS_STARTER_ADDRESS="unix:path=/run/dbus/system_bus_socket" \
+    DBUS_SESSION_BUS_ADDRESS="unix:path=/run/dbus/system_bus_socket" \
+    XDG_RUNTIME_DIR="/run/user/1000"
+
+RUN apt-get update 
+
+# System packages and dependencies
+RUN apt-get update && apt-get install -y \
+    # Desktop environment
+    ubuntu-desktop \
+    xfce4 \
+    xfce4-goodies \
+    xfconf \
+    # VNC and X11 components
+    x11vnc \
+    x11-utils \
+    x11-xserver-utils \
+    xvfb \
+    xserver-xorg-video-dummy \
+    # System utilities
+    supervisor \
+    wget \
+    curl \
+    git \
+    gnupg \
+    gettext-base \
+    socat \
+    # Python and development tools
+    python3 \
+    python3-pip \
+    python3-tk \
+    python3-dev \
+    software-properties-common \
+    # Screenshot and window management
+    gnome-screenshot \
+    wmctrl \
+    ffmpeg \
+    xclip \
+    xdotool \
+    scrot \
+    # Fonts and themes
+    fonts-takao \
+    fonts-noto \
+    fonts-noto-color-emoji \
+    fonts-liberation \
+    arc-theme \
+    papirus-icon-theme \
+    # Chrome dependencies
+    libappindicator3-1 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libnspr4 \
+    libnss3 \
+    libu2f-udev \
+    libvulkan1 \
+    # Additional packages
+    xml-core \
+    dbus-x11 \
+    cpp \
+    libxml2 \
+    ubuntu-wallpapers \
+    plank \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set up locales
+RUN locale-gen en_US.UTF-8 && \
+    update-locale LANG=en_US.UTF-8
+
+# Create and configure user
+RUN useradd -m -s /bin/bash -G audio,video,sudo user && \
+    echo 'user:password' | chpasswd && \
+    mkdir -p /home/user/.config && \
+    chown -R user:user /home/user && \
+    touch /home/user/.Xauthority && \
+    chown user:user /home/user/.Xauthority && \
+    echo 'export DISPLAY=:1' >> /home/user/.bashrc
+
+# Install noVNC
+RUN mkdir -p /opt/noVNC/utils/websockify && \
+    wget -qO- https://github.com/novnc/noVNC/archive/v1.3.0.tar.gz | tar xz --strip 1 -C /opt/noVNC && \
+    wget -qO- https://github.com/novnc/websockify/archive/v0.10.0.tar.gz | tar xz --strip 1 -C /opt/noVNC/utils/websockify && \
+    ln -s /opt/noVNC/vnc.html /opt/noVNC/index.html
+
+# Configure GDM3 for automatic login
+RUN mkdir -p /etc/gdm3 && \
+    echo '[daemon]\nAutomaticLoginEnable=true\nAutomaticLogin=user' > /etc/gdm3/custom.conf
+
+# Set up X11 and display configuration
+RUN mkdir -p /etc/X11/xorg.conf.d && \
+    systemctl set-default graphical.target
+
+# Install and configure Google Chrome
+RUN wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    apt-get update && \
+    apt-get install -y ./google-chrome-stable_current_amd64.deb && \
+    rm google-chrome-stable_current_amd64.deb && \
+    mkdir -p /home/user/.config/chrome && \
+    chown -R user:user /home/user/.config/chrome
+
+# Set up dbus environment
+RUN mkdir -p /run/dbus/ && \
+    chmod 777 /run/dbus/ && \
+    chown -R user:user /run/dbus/ && \
+    mkdir -p /etc/dbus-1/system.d && \
+    mkdir -p /usr/share/dbus-1/system-services && \
+    mkdir -p /run/user/1000 && \
+    chown -R user:user /run/user/1000 && \
+    chmod 700 /run/user/1000
+
+# Configure XFCE4
+RUN mkdir -p /home/user/.config/xfce4/xfconf/xfce-perchannel-xml && \
+    chown -R user:user /home/user/.config/xfce4/xfconf/xfce-perchannel-xml && \
+    mkdir -p /home/user/.config/gtk-3.0 && \
+    echo '[Settings]\ngtk-theme-name=Arc-Dark\ngtk-icon-theme-name=Papirus-Dark\ngtk-font-name=Noto Sans 11' > /home/user/.config/gtk-3.0/settings.ini && \
+    chown -R user:user /home/user/.config/gtk-3.0
+
+# Install Python packages
+COPY ubuntu_xfce4/requirements.txt /tmp/
+RUN pip3 install -r /tmp/requirements.txt && \
+    pip3 install python3-pyatspi && \
+    ln -s /usr/bin/python3 /usr/bin/python
+
+# Remove unnecessary packages and clean up
+RUN apt-get remove -y update-manager update-notifier apport xfce4-power-manager && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -f /etc/xdg/autostart/xfce4-power-manager.desktop && \
+    rm -f /home/user/.config/autostart/xfce4-power-manager.desktop
+
+# Copy configuration files
+COPY ubuntu_xfce4/xorg.conf /etc/X11/xorg.conf
+COPY ubuntu_xfce4/10-dummy.conf /etc/X11/xorg.conf.d/10-dummy.conf
+COPY ubuntu_xfce4/desktop.conf /etc/supervisor/conf.d/desktop.conf
+COPY ubuntu_xfce4/xsettings.xml /home/user/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml
+COPY ubuntu_xfce4/xfce4-panel.xml /home/user/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml
+COPY ubuntu_xfce4/xfwm4.xml /home/user/.config/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml
+COPY ubuntu_xfce4/opt/chrome/policies/managed /opt/chrome/policies/managed
+COPY ubuntu_xfce4/init_dbus_socket.py /usr/local/bin/init-dbus-socket
+COPY ubuntu_xfce4/plank-entry /home/user/.config/autostart/plank.desktop
+
+# Set up plank dock
+RUN mkdir -p /home/user/.config/autostart && \
+    chmod +x /usr/local/bin/init-dbus-socket
+
+# Expose ports
+EXPOSE 5000 9222 8006 8080
+
+# Switch to user for final setup
+USER user
+WORKDIR /home/user
+COPY ./ubuntu_xfce4/ .
+COPY pyxcursor.py .
+COPY server.py .
+
+# Switch back to root for startup
+USER root
+
+# Start supervisor
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+
+# /usr/bin/supervisord -c /etc/supervisor/supervisord.conf &
+# cat /var/log/budgie-desktop.log

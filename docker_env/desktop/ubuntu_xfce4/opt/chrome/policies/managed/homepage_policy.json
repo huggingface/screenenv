@@ -1,0 +1,10 @@
+{
+    "HomepageLocation": "about:blank",
+    "NewTabPageLocation": "about:blank",
+    "HomepageIsNewTabPage": false,
+    "SyncDisabled": true,
+    "RestoreOnStartup": 4,
+    "RestoreOnStartupURLs": [
+        "about:blank"
+    ]
+}
