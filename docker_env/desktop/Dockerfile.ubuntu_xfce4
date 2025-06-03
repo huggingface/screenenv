@@ -11,8 +11,6 @@ ENV DEBIAN_FRONTEND=noninteractive \
     DBUS_SESSION_BUS_ADDRESS="unix:path=/run/dbus/system_bus_socket" \
     XDG_RUNTIME_DIR="/run/user/1000"
 
-RUN apt-get update 
-
 # System packages and dependencies
 RUN apt-get update && apt-get install -y \
     # Desktop environment
