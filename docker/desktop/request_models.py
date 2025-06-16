@@ -6,6 +6,8 @@ import shlex
 class CommandRequest(BaseModel):
     command: str | list[str] = Field(default=[])
     shell: bool = False
+    timeout: int = 120
+    background: bool = False
 
     @model_validator(mode="after")
     def post_init(self):
