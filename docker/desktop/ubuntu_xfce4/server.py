@@ -217,16 +217,16 @@ class UbuntuXfce4Server(BaseServer):
             except Exception as e:
                 self.logger.error("Failed to execute command. Error: %s", e)
                 self.logger.info("Retrying to execute command.")
-                if i < retry_times - 1:
-                    time.sleep(i)
-                    continue
-                return CommandResponse(
-                    status=StatusEnum.ERROR,
-                    message="Failed to execute command.",
-                    output="",
-                    error="",
-                    returncode=1,
-                )
+                if i >= retry_times - 1:
+                    break
+            time.sleep(i)
+        return CommandResponse(
+            status=StatusEnum.ERROR,
+            message="Failed to execute command.",
+            output="",
+            error="",
+            returncode=1,
+        )
 
     def _get_machine_architecture(self) -> str:
         architecture = platform.machine().lower()
