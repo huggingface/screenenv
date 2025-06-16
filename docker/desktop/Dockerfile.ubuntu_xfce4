@@ -98,10 +98,15 @@ RUN mkdir -p /etc/X11/xorg.conf.d && \
     systemctl set-default graphical.target
 
 # Install and configure Google Chrome
-RUN wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
-    apt-get update && \
-    apt-get install -y ./google-chrome-stable_current_amd64.deb && \
-    rm google-chrome-stable_current_amd64.deb && \
+RUN if [ "$(uname -m)" = "x86_64" ]; then \
+        wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+        apt-get update && \
+        apt-get install -y ./google-chrome-stable_current_amd64.deb && \
+        rm google-chrome-stable_current_amd64.deb; \
+    elif [ "$(uname -m)" = "aarch64" ]; then \
+        apt-get update && \
+        apt-get install -y chromium-browser; \
+    fi && \
     mkdir -p /home/user/.config/chrome && \
     chown -R user:user /home/user/.config/chrome
 
@@ -159,6 +164,8 @@ USER user
 WORKDIR /home/user
 COPY ./ubuntu_xfce4/ .
 COPY pyxcursor.py .
+COPY request_models.py .
+COPY response_models.py .
 COPY server.py .
 
 # Switch back to root for startup
