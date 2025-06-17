@@ -15,8 +15,9 @@ import lxml.etree
 import pyatspi
 import pyautogui
 import requests
+import uvicorn
 import Xlib
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from lxml.etree import _Element
 from pyatspi import (
@@ -182,7 +183,7 @@ class UbuntuXfce4Server(BaseServer):
         for i in range(retry_times):
             try:
                 if background:
-                    process = subprocess.Popen(
+                    subprocess.Popen(
                         command,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
@@ -685,8 +686,8 @@ class UbuntuXfce4Server(BaseServer):
                 detail=f"Failed to close window {request.window_name}. Error: {e}",
             )
 
-    async def start_recording(self, app: FastAPI) -> RecordingResponse:
-        if app.state.recording_process:
+    async def start_recording(self) -> RecordingResponse:
+        if self.recording_process:
             raise HTTPException(
                 status_code=400, detail="Recording is already in progress."
             )
@@ -697,33 +698,33 @@ class UbuntuXfce4Server(BaseServer):
 
         start_command = f"ffmpeg -y -f x11grab -draw_mouse 1 -s {screen_width}x{screen_height} -i :0.0 -c:v libx264 -r 30 {app.state.recording_path}"
 
-        app.state.recording_process = subprocess.Popen(
+        self.recording_process = subprocess.Popen(
             shlex.split(start_command),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
 
         return RecordingResponse(
-            path=app.state.recording_path,
+            path=self.recording_path,
             format="mp4",
             message="Recording started successfully",
         )
 
-    async def end_recording(self, app: FastAPI) -> RecordingResponse:
-        if not app.state.recording_process:
+    async def end_recording(self) -> RecordingResponse:
+        if not self.recording_process:
             raise HTTPException(
                 status_code=400, detail="No recording in progress to stop."
             )
 
-        app.state.recording_process.send_signal(signal.SIGINT)
-        app.state.recording_process.wait()
-        app.state.recording_process = None
+        self.recording_process.send_signal(signal.SIGINT)
+        self.recording_process.wait()
+        self.recording_process = None
 
         # return recording video file
-        if os.path.exists(app.state.recording_path):
-            size = os.path.getsize(app.state.recording_path)
+        if os.path.exists(self.recording_path):
+            size = os.path.getsize(self.recording_path)
             return RecordingResponse(
-                path=app.state.recording_path,
+                path=self.recording_path,
                 format="mp4",
                 size=size,
                 message="Recording completed successfully",
@@ -849,7 +850,7 @@ class UbuntuXfce4Server(BaseServer):
             CommandRequest(command=f"xdotool mouseup {self.MOUSE_BUTTONS[button]}")
         )
 
-    async def get_cursor_position(self) -> tuple[int, int]:
+    async def get_cursor_position(self) -> CursorPositionResponse:
         """
         Get the current cursor position.
 
@@ -876,7 +877,7 @@ class UbuntuXfce4Server(BaseServer):
             screen=0,  # TODO: Implement multi-monitor support
         )
 
-    async def get_screen_size(self) -> tuple[int, int]:
+    async def get_screen_size(self) -> ScreenSizeResponse:
         """
         Get the current screen size.
 
@@ -1011,3 +1012,8 @@ class UbuntuXfce4Server(BaseServer):
                 timeout=0,
             )
         )
+
+
+if __name__ == "__main__":
+    server = UbuntuXfce4Server()
+    uvicorn.run(server.app, host="0.0.0.0", port=8000)

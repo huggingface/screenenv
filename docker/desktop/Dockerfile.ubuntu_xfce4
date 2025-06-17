@@ -37,6 +37,10 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     python3-tk \
     python3-dev \
+    python3-gi \
+    python3-gi-cairo \
+    python3-cairo \
+    python3-cairo-dev \
     software-properties-common \
     # Screenshot and window management
     gnome-screenshot \
@@ -66,8 +70,13 @@ RUN apt-get update && apt-get install -y \
     dbus-x11 \
     cpp \
     libxml2 \
+    libcairo2-dev \
+    libxt-dev \
+    libgirepository1.0-dev \
     ubuntu-wallpapers \
     plank \
+    gir1.2-gtk-3.0 \
+    pkg-config \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -100,13 +109,13 @@ RUN mkdir -p /etc/X11/xorg.conf.d && \
 
 # Install and configure Google Chrome
 RUN if [ "$(uname -m)" = "x86_64" ]; then \
-        wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
-        apt-get update && \
-        apt-get install -y ./google-chrome-stable_current_amd64.deb && \
-        rm google-chrome-stable_current_amd64.deb; \
+    wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    apt-get update && \
+    apt-get install -y ./google-chrome-stable_current_amd64.deb && \
+    rm google-chrome-stable_current_amd64.deb; \
     elif [ "$(uname -m)" = "aarch64" ]; then \
-        apt-get update && \
-        apt-get install -y chromium-browser; \
+    apt-get update && \
+    apt-get install -y chromium-browser; \
     fi && \
     mkdir -p /home/user/.config/chrome && \
     chown -R user:user /home/user/.config/chrome
@@ -130,8 +139,8 @@ RUN mkdir -p /home/user/.config/xfce4/xfconf/xfce-perchannel-xml && \
 
 # Install Python packages
 COPY ubuntu_xfce4/requirements.txt /tmp/
-RUN pip3 install -r /tmp/requirements.txt && \
-    pip3 install python3-pyatspi && \
+RUN pip3 install --upgrade meson ninja && \
+    pip3 install -r /tmp/requirements.txt && \
     ln -s /usr/bin/python3 /usr/bin/python
 
 # Remove unnecessary packages and clean up
@@ -164,10 +173,11 @@ EXPOSE 5000 9222 8006 8080
 USER user
 WORKDIR /home/user
 COPY ./ubuntu_xfce4/ .
-COPY pyxcursor.py .
-COPY request_models.py .
-COPY response_models.py .
-COPY server.py .
+COPY ./ubuntu_xfce4/server.py desktop/ubuntu_xfce4/server.py
+COPY pyxcursor.py desktop/pyxcursor.py
+COPY request_models.py desktop/request_models.py
+COPY response_models.py desktop/response_models.py
+COPY base_server.py desktop/base_server.py
 
 # Switch back to root for startup
 USER root
@@ -176,4 +186,4 @@ USER root
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
 
 # /usr/bin/supervisord -c /etc/supervisor/supervisord.conf &
-# cat /var/log/budgie-desktop.log
+# cat /var/log/main.log
