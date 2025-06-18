@@ -19,7 +19,8 @@ def recording():
         print(resp)
         sleep()
     finally:
-        s.close()
+        pass
+        # s.close()
 
 
 def test_with_xfce4_terminal():
@@ -282,9 +283,15 @@ def test_sandbox_misc_functions():
 
 
 if __name__ == "__main__":
+    import webbrowser
+
+    # Open in default web browser
     # test_with_xfce4_terminal()
     # test_sandbox_misc_functions()
     with recording() as s:
+        # URL to your local noVNC tunnel
+        url = "http://localhost:8006/vnc.html?host=localhost&port=8006"
+        webbrowser.open(url)
         resp = s.open("https://www.example.com")
         print(resp)
         # s.open("https://www.wikipedia.org")
