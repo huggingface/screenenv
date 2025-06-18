@@ -4,17 +4,19 @@ import logging
 import os
 import time
 import shlex
-from typing import Any, Literal, Optional
+from typing import Any, Callable, Literal, Optional
 import requests
 import json
 from playwright.sync_api import sync_playwright, Browser, BrowserContext, Playwright
+from urllib.parse import urlparse
 
 from .remote_provider import DockerProviderConfig, create_remote_env_provider
 from .retry_decorator import retry
 from dockerfiles.desktop.request_models import (
     CommandRequest,
     DirectoryRequest,
-    WindowSizeRequest,
+    FileRequest,
+    DownloadRequest,
 )
 from dockerfiles.desktop.response_models import (
     CommandResponse,
@@ -29,6 +31,7 @@ from dockerfiles.desktop.response_models import (
     WindowInfoResponse,
     WindowListResponse,
     RecordingResponse,
+    AccessibilityTreeResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -114,22 +117,24 @@ class Sandbox:
     # Chrome setup
     def _chrome_open_tabs_setup(self, urls_to_open: list[str]) -> None:
         host = self.provider.get_ip_address().ip_address
-        port = (
-            self.chromium_port
-        )  # fixme: this port is hard-coded, need to be changed from config file
+        port = self.chromium_port
 
         remote_debugging_url = f"http://{host}:{port}"
         logger.info("Connect to Chrome @: %s", remote_debugging_url)
         logger.debug("PLAYWRIGHT ENV: %s", repr(os.environ))
 
-        playwright = sync_playwright().start()
+        if self._playwright is None:
+            self._playwright = sync_playwright().start()
+
         for attempt in range(15):
             if attempt > 0:
                 time.sleep(5)
 
             browser = None
             try:
-                browser = playwright.chromium.connect_over_cdp(remote_debugging_url)
+                browser = self._playwright.chromium.connect_over_cdp(
+                    remote_debugging_url
+                )
             except Exception as e:
                 if attempt < 14:
                     logger.error(
@@ -138,11 +143,12 @@ class Sandbox:
                     continue
                 else:
                     logger.error(f"Failed to connect after multiple attempts: {e}")
-                    playwright.stop()
+                    self._playwright.stop()
                     raise e
 
             if not browser:
-                playwright.stop()
+                self._playwright.stop()
+                self._playwright = None
                 return None
 
             logger.info("Opening %s...", urls_to_open)
@@ -169,12 +175,39 @@ class Sandbox:
                     default_page = context.pages[0]
                     default_page.close()
 
-            # Store playwright instance as instance variable so it can be cleaned up later
-            self._playwright = playwright
             # Do not close the context or browser; they will remain open after script ends
             self.browser, self.chromium_context = browser, context
 
             break
+
+    def health(self) -> bool:
+        """Check the health of the environment"""
+        try:
+            response = requests.get(f"{self.base_url}/screenshot")
+            response.raise_for_status()
+        except Exception as e:
+            print(f"Environment is not healthy: {e}")
+            return False
+        return True
+
+    def _wait_and_verify(
+        self,
+        cmd: str,
+        on_result: Callable[[CommandResponse], bool],
+        timeout: int = 10,
+        interval: float = 0.5,
+    ) -> bool:
+        elapsed: float = 0
+        while elapsed < timeout:
+            try:
+                if on_result(self.execute_command(command=cmd)):
+                    return True
+            except Exception as e:
+                logger.error(f"Error executing command {cmd}: {e}")
+                time.sleep(interval)
+                elapsed += interval
+
+        return False
 
     def execute_python_command(
         self, command: str, import_prefix: list[str]
@@ -199,7 +232,7 @@ class Sandbox:
     ) -> CommandResponse:
         """Executes a terminal command on the server."""
         payload = CommandRequest(
-            command=command, shell=False, background=background, timeout=timeout
+            command=command, background=background, timeout=timeout
         )
 
         try:
@@ -221,19 +254,85 @@ class Sandbox:
                 returncode=response.status_code,
             )
 
-    def get_terminal_output(self) -> TerminalOutputResponse:
-        """Gets the terminal output from the server."""
-        response = self._make_request("GET", "/terminal")
-        logger.info("Got terminal output successfully")
-        return TerminalOutputResponse(**response.json())
+    def get_accessibility_tree(self) -> AccessibilityTreeResponse:
+        """Gets the accessibility tree of the vm."""
+        response = self._make_request("GET", "/accessibility")
+        logger.info("Got accessibility tree successfully")
+        return AccessibilityTreeResponse(**response.json())
 
-    def get_desktop_screenshot(self) -> bytes:
+    def desktop_path(self) -> DesktopPathResponse:
+        """Gets the desktop path of the vm."""
+        response = self._make_request("GET", "/desktop_path")
+        logger.info("Got desktop path successfully")
+        return DesktopPathResponse(**response.json())
+
+    def directory_tree(self, path: str) -> DirectoryTreeResponse:
+        """Gets the directory tree of the vm."""
+        payload = DirectoryRequest(path=path)
+        response = self._make_request(
+            "GET",
+            "/list_directory",
+            headers={"Content-Type": "application/json"},
+            data=payload.model_dump_json(),
+        )
+        logger.info("Got directory tree successfully")
+        return DirectoryTreeResponse(**response.json())
+
+    def download_file_from_remote(self, remote_path: str, local_dest: str) -> None:
+        """Gets the file from the vm."""
+        file_request = FileRequest(file_path=remote_path)
+        response_stream = self._make_request(
+            "GET",
+            "/file",
+            headers={"Content-Type": "application/json"},
+            data=file_request.model_dump_json(),
+        )
+        with open(local_dest, "wb") as f:
+            for chunk in response_stream.iter_content(chunk_size=8192):
+                if not chunk:
+                    break
+                f.write(chunk)
+        logger.info(
+            f"Downloaded file from remote '{remote_path}' to local '{local_dest}'"
+        )
+
+    def upload_file_to_remote(self, local_path: str, remote_path: str = ".") -> None:
+        """
+        Uploads a file from the local machine to the remote environment at the specified remote path.
+        """
+        with open(local_path, "rb") as f:
+            files = {
+                "file_data": (os.path.basename(local_path), f),
+            }
+            data = {"file_path": remote_path}
+            self._make_request(
+                "POST",
+                "/upload",
+                files=files,
+                data=data,
+            )
+        logger.info(f"Uploaded local file '{local_path}' to remote '{remote_path}'")
+
+    def download_url_file_to_remote(self, url: str, remote_path: str) -> None:
+        """
+        Instructs the remote environment to download a file from a URL to a specified path inside the remote environment.
+        """
+        payload = DownloadRequest(url=url, path=remote_path)
+        self._make_request(
+            "POST",
+            "/download_url",
+            headers={"Content-Type": "application/json"},
+            data=payload.model_dump_json(),
+        )
+        logger.info(f"Remote environment downloaded URL '{url}' to '{remote_path}'")
+
+    def desktop_screenshot(self) -> bytes:
         """Gets a screenshot from the server."""
         response = self._make_request("GET", "/screenshot")
         logger.info("Got screenshot successfully")
         return response.content
 
-    def get_playwright_screenshot(self, full_page: bool = True) -> bytes | None:
+    def playwright_screenshot(self, full_page: bool = True) -> bytes | None:
         """
         Gets a screenshot using Playwright from the active browser context.
         Returns None if browser context is not available.
@@ -246,67 +345,19 @@ class Sandbox:
             # Get the active page
             page = self.chromium_context.pages[0]
             # Take screenshot
-            screenshot_bytes = page.screenshot(type="png", full_page=True)
+            screenshot_bytes = page.screenshot(type="png", full_page=full_page)
             return screenshot_bytes
         except Exception as e:
             logger.error(f"Failed to take screenshot using Playwright: {e}")
             return None
 
-    def screenshot(self) -> bytes | None:
-        """
-        Gets a screenshot from the server. With the cursor. None -> no screenshot or unexpected error.
-        """
-        return self.get_desktop_screenshot()
-
-    def get_vm_platform(self) -> PlatformResponse:
+    def platform(self) -> PlatformResponse:
         """
         Gets the size of the vm screen.
         """
         response = self._make_request("GET", "/platform")
         logger.info("Got platform successfully")
         return PlatformResponse(**response.json())
-
-    def get_cursor_position(self) -> CursorPositionResponse:
-        """Gets the cursor position of the vm."""
-        response = self._make_request("GET", "/cursor_position")
-        logger.info("Got cursor position successfully")
-        return CursorPositionResponse(**response.json())
-
-    def get_window_size(self, app_class_name: str) -> WindowSizeResponse:
-        """Gets the size of the vm window."""
-        payload = WindowSizeRequest(app_class_name=app_class_name)
-        response = self._make_request(
-            "GET",
-            "/window_size",
-            headers={"Content-Type": "application/json"},
-            data=payload.model_dump_json(),
-        )
-        logger.info("Got window size successfully")
-        return WindowSizeResponse(**response.json())
-
-    def get_screen_size(self) -> ScreenSizeResponse:
-        """Gets the size of the vm screen."""
-        response = self._make_request("GET", "/screen_size")
-        logger.info("Got screen size successfully")
-        return ScreenSizeResponse(**response.json())
-
-    def get_desktop_path(self) -> DesktopPathResponse:
-        """Gets the desktop path of the vm."""
-        response = self._make_request("GET", "/desktop_path")
-        logger.info("Got desktop path successfully")
-        return DesktopPathResponse(**response.json())
-
-    def get_directory_tree(self, path: str) -> DirectoryTreeResponse:
-        """Gets the directory tree of the vm."""
-        payload = DirectoryRequest(path=path)
-        response = self._make_request(
-            "GET",
-            "/list_directory",
-            headers={"Content-Type": "application/json"},
-            data=payload.model_dump_json(),
-        )
-        logger.info("Got directory tree successfully")
-        return DirectoryTreeResponse(**response.json())
 
     # Record video
     def start_recording(self) -> RecordingResponse:
@@ -320,8 +371,12 @@ class Sandbox:
         response_end_rec = self._make_request("POST", "/end_recording")
         metadata = RecordingResponse(**response_end_rec.json())
         logger.info("Recording stopped successfully")
+        file_request = FileRequest(file_path=metadata.path)
         response_stream = self._make_request(
-            "GET", "/stream_file", params={"file_path": metadata.path}
+            "GET",
+            "/file",
+            headers={"Content-Type": "application/json"},
+            data=file_request.model_dump_json(),
         )
         with open(dest, "wb") as f:
             for chunk in response_stream.iter_content(chunk_size=8192):
@@ -335,115 +390,11 @@ class Sandbox:
             format=metadata.format,
         )
 
-    def close(self) -> None:
-        """Close the environment"""
-        if self._playwright is not None:
-            self._playwright.stop()
-        self.provider.stop_emulator()
-
-    def kill(self) -> None:
-        """Kill the environment"""
-        self.close()
-
-    def health(self) -> bool:
-        """Check the health of the environment"""
-        try:
-            response = requests.get(f"{self.base_url}/screenshot")
-            response.raise_for_status()
-        except Exception as e:
-            print(f"Environment is not healthy: {e}")
-            return False
-        return True
-
-    # ================================
-    # Keyboard and mouse actions space
-    # ================================
-    def move_mouse(self, x: int, y: int):
-        """
-        Moves the mouse to the specified coordinates.
-        """
-        self._make_request("POST", "/move_mouse", params={"x": x, "y": y})
-
-    def mouse_press(self, button: Literal["left", "right", "middle"] = "left"):
-        """
-        Presses the specified button of the mouse.
-        """
-        self._make_request("POST", "/mouse_press", params={"button": button})
-
-    def mouse_release(self, button: Literal["left", "right", "middle"] = "left"):
-        """
-        Releases the specified button of the mouse.
-        """
-        self._make_request("POST", "/mouse_release", params={"button": button})
-
-    def left_click(self, x: Optional[int] = None, y: Optional[int] = None):
-        """
-        Clicks the left button of the mouse at the specified coordinates.
-        """
-        self._make_request("POST", "/left_click", params={"x": x, "y": y})
-
-    def right_click(self, x: Optional[int] = None, y: Optional[int] = None):
-        """
-        Clicks the right button of the mouse at the specified coordinates.
-        """
-        self._make_request("POST", "/right_click", params={"x": x, "y": y})
-
-    def middle_click(self, x: Optional[int] = None, y: Optional[int] = None):
-        """
-        Clicks the middle button of the mouse at the specified coordinates.
-        """
-        self._make_request("POST", "/middle_click", params={"x": x, "y": y})
-
-    def double_click(self, x: Optional[int] = None, y: Optional[int] = None):
-        """
-        Double-clicks the left button of the mouse at the specified coordinates.
-        """
-        self._make_request("POST", "/double_click", params={"x": x, "y": y})
-
-    def write(self, text: str, delay_in_ms: int = 75):
-        """
-        Writes the specified text at the current cursor position.
-        """
-        self._make_request(
-            "POST",
-            "/write",
-            params={"text": text, "delay_in_ms": delay_in_ms},
-        )
-
-    def press(self, key: str | list[str]):
-        """
-        Presses a keyboard key
-        """
-        self._make_request(
-            "POST",
-            "/press",
-            headers={"Content-Type": "application/json"},
-            data=json.dumps(key),
-        )
-
-    def drag(self, fr: tuple[int, int], to: tuple[int, int]):
-        """
-        Drags the mouse from the start position to the end position.
-        """
-        self._make_request("POST", "/drag", params={"fr": fr, "to": to})
-
-    def scroll(
-        self, x: int, y: int, direction: Literal["up", "down"] = "down", amount: int = 1
-    ):
-        """
-        Scrolls the mouse wheel in the specified direction.
-        """
-        self._make_request(
-            "POST",
-            "/scroll",
-            params={"x": x, "y": y, "direction": direction, "amount": amount},
-        )
-
     def wait(self, ms: int):
         """
         Waits for the specified amount of time.
         """
-        time.sleep(ms / 1000)
+        self._make_request("POST", "/wait", params={"ms": ms})
 
     def open_chrome(self, url: str):
         """
@@ -476,35 +427,13 @@ class Sandbox:
                 status=StatusEnum.SUCCESS, output="", error="", returncode=0
             )
 
-    def launch(self, application: str, uri: Optional[str] = None):
-        """
-        Launches the specified application.
-        """
-        try:
-            self._make_request(
-                "POST",
-                "/launch",
-                params={"application": application, "uri": uri},
-            )
-            logger.info("Launched application successfully")
-            return CommandResponse(
-                status=StatusEnum.SUCCESS, output="", error="", returncode=0
-            )
-        except Exception as e:
-            return CommandResponse(
-                status=StatusEnum.ERROR,
-                message="Failed to launch application.",
-                output="",
-                error=str(e),
-                returncode=1,
-            )
-
     def open(self, url_or_file: str, sleep_time: int = 10) -> CommandResponse:
         """
         Opens the specified URL or file in the default application.
         """
 
-        if url_or_file.startswith(("http://", "https://")):
+        url_parsed = urlparse(url_or_file)
+        if url_parsed.scheme and url_parsed.netloc:
             response = self.open_chrome(url_or_file)
         else:
             try:
@@ -540,26 +469,219 @@ class Sandbox:
         time.sleep(3)
         return response
 
-    def get_current_window_id(self) -> WindowInfoResponse:
-        response = self._make_request("GET", "/get_current_window_id")
+    def launch(self, application: str, uri: Optional[str] = None):
+        """
+        Launches the specified application.
+        """
+        try:
+            self._make_request(
+                "POST",
+                "/launch",
+                params={"application": application, "uri": uri},
+            )
+            logger.info("Launched application successfully")
+            return CommandResponse(
+                status=StatusEnum.SUCCESS, output="", error="", returncode=0
+            )
+        except Exception as e:
+            return CommandResponse(
+                status=StatusEnum.ERROR,
+                message="Failed to launch application.",
+                output="",
+                error=str(e),
+                returncode=1,
+            )
+
+    def get_current_window_id(self) -> str:
+        response = self._make_request("GET", "/current_window_id")
         logger.info("Got current window ID successfully")
-        return WindowInfoResponse(**response.json())
+        window_info_response = WindowInfoResponse(**response.json())
+        return window_info_response.window_id or ""
 
-    def get_window_title(self, window_id: str) -> WindowInfoResponse:
-        response = self._make_request(
-            "GET", "/get_window_title", params={"window_id": window_id}
-        )
-        logger.info("Got window title successfully")
-        return WindowInfoResponse(**response.json())
-
-    def get_application_windows(self, application: str) -> WindowListResponse:
+    def get_application_windows(self, application: str) -> list[str]:
         response = self._make_request(
             "GET",
-            "/get_application_windows",
+            "/application_windows",
             params={"application": application},
         )
         logger.info("Got application windows successfully")
-        return WindowListResponse(**response.json())
+        window_list_response = WindowListResponse(**response.json())
+        return [
+            win.window_id
+            for win in window_list_response.windows
+            if win.window_id is not None
+        ]
+
+    def get_window_title(self, window_id: str) -> str:
+        response = self._make_request(
+            "GET", "/window_name", params={"window_id": window_id}
+        )
+        logger.info("Got window title successfully")
+        window_info_response = WindowInfoResponse(**response.json())
+        return window_info_response.window_name or ""
+
+    def window_size(self, window_id: str) -> WindowSizeResponse:
+        """Gets the size of the vm window."""
+        response = self._make_request(
+            "GET", "/window_size", params={"window_id": window_id}
+        )
+        logger.info("Got window size successfully")
+        return WindowSizeResponse(**response.json())
+
+    def activate_window(self, window_id: str):
+        response = self._make_request(
+            "POST",
+            "/activate_window",
+            params={"window_id": window_id},
+        )
+        logger.info("Activated window successfully")
+        return WindowInfoResponse(**response.json())
+
+    def close_window(self, window_id: str):
+        response = self._make_request(
+            "POST",
+            "/close_window",
+            params={"window_id": window_id},
+        )
+        logger.info("Closed window successfully")
+        return WindowInfoResponse(**response.json())
+
+    def get_terminal_output(self) -> TerminalOutputResponse:
+        response = self._make_request("GET", "/terminal")
+        logger.info("Got terminal output successfully")
+        return TerminalOutputResponse(**response.json())
+
+    # ================================
+    # Keyboard and mouse actions space
+    # ================================
+
+    def screenshot(self) -> bytes | None:
+        """
+        Gets a screenshot from the server. With the cursor. None -> no screenshot or unexpected error.
+        """
+        return self.desktop_screenshot()
+
+    def left_click(self, x: Optional[int] = None, y: Optional[int] = None):
+        """
+        Clicks the left button of the mouse at the specified coordinates.
+        """
+        self._make_request("POST", "/left_click", params={"x": x, "y": y})
+
+    def right_click(self, x: Optional[int] = None, y: Optional[int] = None):
+        """
+        Clicks the right button of the mouse at the specified coordinates.
+        """
+        self._make_request("POST", "/right_click", params={"x": x, "y": y})
+
+    def middle_click(self, x: Optional[int] = None, y: Optional[int] = None):
+        """
+        Clicks the middle button of the mouse at the specified coordinates.
+        """
+        self._make_request("POST", "/middle_click", params={"x": x, "y": y})
+
+    def double_click(self, x: Optional[int] = None, y: Optional[int] = None):
+        """
+        Double-clicks the left button of the mouse at the specified coordinates.
+        """
+        self._make_request("POST", "/double_click", params={"x": x, "y": y})
+
+    def scroll(
+        self, x: int, y: int, direction: Literal["up", "down"] = "down", amount: int = 1
+    ):
+        """
+        Scrolls the mouse wheel in the specified direction.
+        """
+        self._make_request(
+            "POST",
+            "/scroll",
+            params={"x": x, "y": y, "direction": direction, "amount": amount},
+        )
+
+    def move_mouse(self, x: int, y: int):
+        """
+        Moves the mouse to the specified coordinates.
+        """
+        self._make_request("POST", "/move_mouse", params={"x": x, "y": y})
+
+    def mouse_press(self, button: Literal["left", "right", "middle"] = "left"):
+        """
+        Presses the specified button of the mouse.
+        """
+        self._make_request("POST", "/mouse_press", params={"button": button})
+
+    def mouse_release(self, button: Literal["left", "right", "middle"] = "left"):
+        """
+        Releases the specified button of the mouse.
+        """
+        self._make_request("POST", "/mouse_release", params={"button": button})
+
+    def get_cursor_position(self) -> tuple[int, int]:
+        """Gets the cursor position of the vm."""
+        try:
+            response = self._make_request("GET", "/cursor_position")
+            logger.info("Got cursor position successfully")
+            cursor_position_response = CursorPositionResponse(**response.json())
+            return (
+                cursor_position_response.x,
+                cursor_position_response.y,
+            )
+        except Exception as e:
+            raise RuntimeError(f"Failed to get cursor position: {e}") from e
+
+    def get_screen_size(self) -> tuple[int, int]:
+        """Gets the size of the vm screen."""
+        try:
+            response = self._make_request("GET", "/screen_size")
+            logger.info("Got screen size successfully")
+            screen_size_response = ScreenSizeResponse(**response.json())
+            return (
+                screen_size_response.width,
+                screen_size_response.height,
+            )
+        except Exception as e:
+            raise RuntimeError(f"Failed to get screen size: {e}") from e
+
+    def write(self, text: str, *, delay_in_ms: int = 75) -> None:
+        """
+        Writes the specified text at the current cursor position.
+        """
+        self._make_request(
+            "POST",
+            "/write",
+            params={"text": text, "delay_in_ms": delay_in_ms},
+        )
+
+    def press(self, key: str | list[str]):
+        """
+        Presses a keyboard key
+        """
+        self._make_request(
+            "POST",
+            "/press",
+            headers={"Content-Type": "application/json"},
+            data=json.dumps(key),
+        )
+
+    def drag(self, fr: tuple[int, int], to: tuple[int, int]):
+        """
+        Drags the mouse from the start position to the end position.
+        """
+        self._make_request(
+            "POST",
+            "/drag",
+            headers={"Content-Type": "application/json"},
+            data=json.dumps({"fr": fr, "to": to}),
+        )
+
+    def close(self) -> None:
+        """Close the environment"""
+        if self._playwright is not None:
+            self._playwright.stop()
+        self.provider.stop_emulator()
+
+    def kill(self) -> None:
+        """Kill the environment"""
+        self.close()
 
     # ================================
 
@@ -569,13 +691,13 @@ if __name__ == "__main__":
     # obs = client.get_obs(require_terminal=True)
 
     def save_desktop_screenshot():
-        screenshot = client.get_desktop_screenshot()
+        screenshot = client.desktop_screenshot()
         if screenshot:
             with open("screenshot_desktop.png", "wb") as f:
                 f.write(screenshot)
 
     def save_playwright_screenshot():
-        screenshot = client.get_playwright_screenshot()
+        screenshot = client.playwright_screenshot()
         if screenshot:
             with open("screenshot_playwright.png", "wb") as f:
                 f.write(screenshot)

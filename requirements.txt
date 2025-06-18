@@ -4,3 +4,4 @@ docker==7.1.0
 filelock==3.18.0
 playwright==1.52.0
 fastapi==0.115.13
+requests==2.32.4
