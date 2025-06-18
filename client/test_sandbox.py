@@ -1,11 +1,25 @@
-import os
 import time
+from contextlib import contextmanager
 
 from client.sandbox import Sandbox
 
 
 def sleep():
     time.sleep(1)
+
+
+@contextmanager
+def recording():
+    try:
+        s = Sandbox()
+        resp = s.start_recording()
+        print(resp)
+        yield s
+        resp = s.end_recording("test.mp4")
+        print(resp)
+        sleep()
+    finally:
+        s.close()
 
 
 def test_with_xfce4_terminal():
@@ -268,13 +282,17 @@ def test_sandbox_misc_functions():
 
 
 if __name__ == "__main__":
-    test_with_xfce4_terminal()
-    test_sandbox_misc_functions()
+    # test_with_xfce4_terminal()
+    # test_sandbox_misc_functions()
+    with recording() as s:
+        resp = s.open("https://www.example.com")
+        print(resp)
+        # s.open("https://www.wikipedia.org")
 
     # remove files created by test
-    os.remove("dummy_README.md")
-    os.remove("dummy_example.html")
-    os.remove("desktop_screenshot.png")
-    os.remove("playwright_screenshot.png")
-    os.remove("test0.mp4")
-    os.remove("test1.mp4")
+    # os.remove("dummy_README.md")
+    # os.remove("dummy_example.html")
+    # os.remove("desktop_screenshot.png")
+    # os.remove("playwright_screenshot.png")
+    # os.remove("test0.mp4")
+    # os.remove("test1.mp4")

@@ -427,47 +427,22 @@ class Sandbox:
                 status=StatusEnum.SUCCESS, output="", error="", returncode=0
             )
 
-    def open(self, url_or_file: str, sleep_time: int = 10) -> CommandResponse:
+    def open(self, file_or_url: str, sleep_time: int = 10) -> CommandResponse:
         """
         Opens the specified URL or file in the default application.
         """
-
-        url_parsed = urlparse(url_or_file)
-        if url_parsed.scheme and url_parsed.netloc:
-            response = self.open_chrome(url_or_file)
-        else:
-            try:
-                response = self._make_request(
-                    "POST",
-                    "/open",
-                    params={"url_or_file": url_or_file},
-                )
-                response = CommandResponse(
-                    status=StatusEnum.SUCCESS, output="", error="", returncode=0
-                )
-                logger.info(
-                    f"Waiting for the file or URL to open for {sleep_time} seconds"
-                )
-                time.sleep(sleep_time)
-            except Exception as e:
-                return CommandResponse(
-                    status=StatusEnum.ERROR,
-                    message="Failed to open the file or URL.",
-                    output="",
-                    error=str(e),
-                    returncode=1,
-                )
-
-        if response.status == StatusEnum.ERROR:
-            return response
-
-        # Try to maximize the window using the window title
-        logger.info("Maximizing the window")
-        response = self.execute_command(
-            "wmctrl -r :ACTIVE: -b add,maximized_vert,maximized_horz"
+        self._make_request(
+            "POST",
+            "/open",
+            params={"file_or_url": file_or_url},
         )
-        time.sleep(3)
-        return response
+        url_parsed = urlparse(file_or_url)
+        if url_parsed.scheme and url_parsed.netloc:
+            self._chrome_open_tabs_setup([file_or_url])
+        time.sleep(sleep_time)
+        return CommandResponse(
+            status=StatusEnum.SUCCESS, output="", error="", returncode=0
+        )
 
     def launch(self, application: str, uri: Optional[str] = None):
         """
