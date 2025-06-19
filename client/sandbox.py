@@ -5,9 +5,18 @@ import os
 import time
 import shlex
 from typing import Any, Callable, Literal, Optional
+import uuid
+import subprocess
+
 import requests
+import webbrowser
 import json
-from playwright.sync_api import sync_playwright, Browser, BrowserContext, Playwright
+from playwright.sync_api import (
+    sync_playwright,
+    Browser,
+    BrowserContext,
+    Playwright,
+)
 from urllib.parse import urlparse
 
 from .remote_provider import DockerProviderConfig, create_remote_env_provider
@@ -38,30 +47,97 @@ logger = logging.getLogger(__name__)
 
 Params = dict[str, int | str]
 
+# Screen size options for desktop environments
+ScreenSize = Literal[
+    # Standard Desktop Resolutions
+    "1920x1080",  # Full HD (most common)
+    "1366x768",  # HD (laptop standard)
+    "2560x1440",  # 2K/QHD
+    "3840x2160",  # 4K/UHD
+    "1280x720",  # HD Ready
+    "1600x900",  # HD+
+    "1920x1200",  # WUXGA
+    "2560x1600",  # WQXGA
+    "3440x1440",  # Ultrawide QHD
+    "5120x1440",  # Super Ultrawide
+    "1920x600",  # Custom wide (current default)
+    # Mobile/Tablet Resolutions
+    "1024x768",  # iPad (portrait)
+    "768x1024",  # iPad (landscape)
+    "360x640",  # Mobile portrait
+    "640x360",  # Mobile landscape
+    # Legacy Resolutions
+    "1024x600",  # Netbook
+    "800x600",  # SVGA
+    "640x480",  # VGA
+    # Additional Common Resolutions
+    "1440x900",  # Custom laptop
+    "1680x1050",  # WSXGA+
+    "1920x1440",  # Custom 4:3 ratio
+    "2560x1080",  # Ultrawide Full HD
+    "3440x1440",  # Ultrawide QHD
+    "3840x1080",  # Super Ultrawide Full HD
+]
+
 
 class Sandbox:
     """Client for interacting with the Android environment server"""
 
     def __init__(
         self,
-        pkgs_to_install: list[str] = [],
         os_type: Literal["Ubuntu", "Windows", "MacOS"] = "Ubuntu",
         provider_type: Literal["docker", "aws", "hf"] = "docker",
         volumes: list[str] = [],
+        headless: bool = True,
+        auto_ssl: bool = False,
+        screen_size: ScreenSize = "1920x1080",
     ):
         logger.info(
             "Setting up Android environment using Docker - Initial setup may take 5-10 minutes. Please wait..."
         )
+        self.session_password = uuid.uuid4().hex
+        self.auto_ssl = auto_ssl
+        self.ssl_cert_file: Optional[str] = None
+        self.environment = {
+            "DISK_SIZE": "32G",
+            "RAM_SIZE": "4G",
+            "CPU_CORES": "4",
+            "SESSION_PASSWORD": self.session_password,
+            "SCREEN_SIZE": f"{screen_size}x24",
+        }
+
+        self.volumes = volumes
+        if self.auto_ssl:
+            try:
+                self.ssl_cert_file = self._generate_ssl_certificate()
+                # Read the certificate content and pass it as environment variable
+                with open(self.ssl_cert_file, "r") as f:
+                    cert_content = f.read()
+                self.environment["SSL_ENABLED"] = "true"
+                self.environment["SSL_CERT_CONTENT"] = cert_content
+                # Keep the certificate file for browser use
+                logger.info(f"SSL certificate generated at: {self.ssl_cert_file}")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to generate SSL certificate, falling back to non-SSL mode: {e}"
+                )
+                self.auto_ssl = False
+                if self.ssl_cert_file and os.path.exists(self.ssl_cert_file):
+                    os.unlink(self.ssl_cert_file)
+                self.ssl_cert_file = None
+
         if os_type == "Ubuntu":
             if provider_type == "docker":
                 config = DockerProviderConfig(
-                    ports_to_forward={5000, 8006, 8080, 9222},
+                    ports_to_forward={5000, 8006, 9222},
                     image="huggingface/ubuntu_xfce4:latest",
                     healthcheck_endpoint="/screenshot",
                     healthcheck_port=5000,
                     healthcheck_retry_interval=10,
+                    healthcheck_headers={"X-Session-Password": self.session_password},
                     volumes=volumes,
                     shm_size="4g",
+                    environment=self.environment,
                 )
             else:
                 raise NotImplementedError(
@@ -76,12 +152,59 @@ class Sandbox:
         self.base_url = f"http://{ip_addr.ip_address}:{ip_addr.host_port[5000]}"
         self.retry_times = 10
         self.retry_interval = 5
-        self.pkgs_to_install = pkgs_to_install
+        self.pkgs_to_install: list[str] = []
 
         self.chromium_port = ip_addr.host_port[9222]
         self.browser: Optional[Browser] = None
         self.chromium_context: Optional[BrowserContext] = None
         self._playwright: Optional[Playwright] = None
+        self.headless = headless
+        if not headless:
+            self.vnc_port = ip_addr.host_port[8006]
+            # Use HTTPS when SSL is enabled (certificate is handled by noVNC in container)
+            vnc_protocol = "https" if self.auto_ssl else "http"
+            # Connect to the container's exposed port from the host
+            self.vnc_url = f"{vnc_protocol}://{ip_addr.ip_address}:{self.vnc_port}/vnc.html?host={ip_addr.ip_address}&port={self.vnc_port}&autoconnect=true&password={self.session_password}"
+            logger.info(
+                f"Opening VNC connection with {'SSL enabled' if self.auto_ssl else 'SSL disabled'}"
+            )
+
+            webbrowser.open(self.vnc_url)
+
+    def _generate_ssl_certificate(self) -> str:
+        """Generate a temporary SSL certificate for VNC"""
+        # Create certificate in a location that Docker can access
+        cert_dir = os.path.expanduser("~/screenenv_certs")
+        os.makedirs(cert_dir, exist_ok=True)
+
+        cert_file = os.path.join(cert_dir, f"cert_{uuid.uuid4().hex}.pem")
+
+        try:
+            subprocess.run(
+                [
+                    "openssl",
+                    "req",
+                    "-x509",
+                    "-newkey",
+                    "rsa:4096",
+                    "-keyout",
+                    cert_file,
+                    "-out",
+                    cert_file,
+                    "-days",
+                    "365",
+                    "-nodes",
+                    "-subj",
+                    "/C=US/ST=State/L=City/O=Organization/CN=*",
+                ],
+                check=True,
+            )
+            logger.info("Generated SSL certificate: %s", cert_file)
+            return cert_file
+        except subprocess.CalledProcessError:
+            if os.path.exists(cert_file):
+                os.unlink(cert_file)
+            raise RuntimeError("Failed to generate SSL certificate")
 
     @retry(retry_times=10, retry_interval=5.0)
     def _make_request(
@@ -89,6 +212,14 @@ class Sandbox:
     ) -> requests.Response:
         """Make an HTTP request with retry logic"""
         url = self.base_url + endpoint
+
+        # Ensure headers exist in kwargs
+        if "headers" not in kwargs:
+            kwargs["headers"] = {}
+
+        # Add session password header
+        kwargs["headers"]["X-Session-Password"] = self.session_password
+
         response = requests.request(method, url, **kwargs)
         if response.status_code >= 400:
             request_info = {
@@ -183,7 +314,7 @@ class Sandbox:
     def health(self) -> bool:
         """Check the health of the environment"""
         try:
-            response = requests.get(f"{self.base_url}/screenshot")
+            response = self._make_request("GET", "/screenshot")
             response.raise_for_status()
         except Exception as e:
             print(f"Environment is not healthy: {e}")
@@ -214,11 +345,13 @@ class Sandbox:
     ) -> CommandResponse:
         """Executes a python command on the server."""
 
+        pkgs_installed = self.pkgs_to_install.copy()
         for pkg in import_prefix:
-            if pkg not in self.pkgs_to_install:
+            if pkg not in pkgs_installed:
                 # install the package
                 logger.info("Installing package: %s", pkg)
                 self.execute_command(f"pip install {pkg}")
+                self.pkgs_to_install.append(pkg)
 
         command_code = (
             "".join(f"import {pkg}; " for pkg in import_prefix) + f" {command}"
@@ -396,38 +529,7 @@ class Sandbox:
         """
         self._make_request("POST", "/wait", params={"ms": ms})
 
-    def open_chrome(self, url: str):
-        """
-        Opens the specified URL in Chrome.
-        """
-        logger.info("Opening Chrome")
-        if self.chromium_context is None:
-            self.execute_command(
-                "google-chrome --remote-debugging-port=1337 --no-first-run --no-sandbox --dbus-stub --disable-gpu --disable-translate --disable-notifications --disable-infobars --user-data-dir=/home/user/.config/chrome --no-default-browser-check --disable-features=Translate",
-                background=True,
-            )
-            time.sleep(5)
-            self.execute_command(
-                "socat tcp-listen:9222,fork tcp:localhost:1337", background=True
-            )
-            self._chrome_open_tabs_setup([url])
-            time.sleep(5)
-        else:
-            self.chromium_context.new_page().goto(url, timeout=60000)
-        if self.chromium_context is None:
-            return CommandResponse(
-                status=StatusEnum.ERROR,
-                message="Failed to open Chrome.",
-                output="",
-                error="",
-                returncode=1,
-            )
-        else:
-            return CommandResponse(
-                status=StatusEnum.SUCCESS, output="", error="", returncode=0
-            )
-
-    def open(self, file_or_url: str, sleep_time: int = 10) -> CommandResponse:
+    def open(self, file_or_url: str) -> CommandResponse:
         """
         Opens the specified URL or file in the default application.
         """
@@ -439,7 +541,6 @@ class Sandbox:
         url_parsed = urlparse(file_or_url)
         if url_parsed.scheme and url_parsed.netloc:
             self._chrome_open_tabs_setup([file_or_url])
-        time.sleep(sleep_time)
         return CommandResponse(
             status=StatusEnum.SUCCESS, output="", error="", returncode=0
         )
@@ -652,13 +753,24 @@ class Sandbox:
         """Close the environment"""
         if self._playwright is not None:
             self._playwright.stop()
+
+        # Clean up SSL certificate if it exists
+        if (
+            hasattr(self, "ssl_cert_file")
+            and self.ssl_cert_file
+            and os.path.exists(self.ssl_cert_file)
+        ):
+            try:
+                os.unlink(self.ssl_cert_file)
+                logger.info(f"Cleaned up SSL certificate: {self.ssl_cert_file}")
+            except Exception as e:
+                logger.warning(f"Failed to clean up SSL certificate: {e}")
+
         self.provider.stop_emulator()
 
     def kill(self) -> None:
         """Kill the environment"""
         self.close()
-
-    # ================================
 
 
 if __name__ == "__main__":

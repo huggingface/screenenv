@@ -11,7 +11,7 @@ def sleep():
 @contextmanager
 def recording():
     try:
-        s = Sandbox()
+        s = Sandbox(headless=False)
         resp = s.start_recording()
         print(resp)
         yield s
@@ -283,18 +283,16 @@ def test_sandbox_misc_functions():
 
 
 if __name__ == "__main__":
-    import webbrowser
-
     # Open in default web browser
     # test_with_xfce4_terminal()
     # test_sandbox_misc_functions()
     with recording() as s:
         # URL to your local noVNC tunnel
-        url = "http://localhost:8006/vnc.html?host=localhost&port=8006"
-        webbrowser.open(url)
+        # url = "http://localhost:8006/vnc.html?host=localhost&port=8006&autoconnect=true"
+        # webbrowser.open(url)
         resp = s.open("https://www.example.com")
         print(resp)
-        # s.open("https://www.wikipedia.org")
+        s.open("https://www.wikipedia.org")
 
     # remove files created by test
     # os.remove("dummy_README.md")
