@@ -1,5 +1,6 @@
 import time
 from contextlib import contextmanager
+from typing import Generator
 
 from screenenv.sandbox import Sandbox
 
@@ -89,7 +90,6 @@ def demo_complex_gui_automation() -> None:
             sleep(0.5)
 
         # Capture terminal output for later use
-        terminal_output = s.get_terminal_output()
         print("📋 System analysis completed")
 
         # ========================================
