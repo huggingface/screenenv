@@ -544,7 +544,7 @@ class Sandbox:
             status=StatusEnum.SUCCESS, output="", error="", returncode=0
         )
 
-    def launch(self, application: str, uri: Optional[str] = None):
+    def launch(self, application: str, wait_for_window: bool = False):
         """
         Launches the specified application.
         """
@@ -552,7 +552,7 @@ class Sandbox:
             self._make_request(
                 "POST",
                 "/launch",
-                params={"application": application, "uri": uri},
+                params={"application": application, "wait_for_window": wait_for_window},
             )
             logger.info("Launched application successfully")
             return CommandResponse(

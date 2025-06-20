@@ -2,7 +2,7 @@ import time
 from contextlib import contextmanager
 from typing import Generator
 
-from screenenv.sandbox import Sandbox
+from screenenv import Sandbox
 
 
 def sleep(seconds: float = 1.0) -> None:
@@ -56,17 +56,11 @@ def demo_complex_gui_automation() -> None:
         # PHASE 1: TERMINAL INTELLIGENCE GATHERING
         # ========================================
         print("\n📊 PHASE 1: Terminal Intelligence Gathering")
-        sleep(1)
+        sleep(4)
 
         # Launch terminal and perform system analysis
         print("Launching xfce4-terminal for system analysis...")
-        s.launch("xfce4-terminal")
-
-        # Get terminal window and activate it
-        terminal_windows = s.get_application_windows("xfce4-terminal")
-        terminal_id = terminal_windows[0]
-        s.activate_window(terminal_id)
-        sleep(1)
+        s.launch("xfce4-terminal", wait_for_window=True)
 
         # Perform comprehensive system analysis
         system_commands = [
@@ -88,6 +82,13 @@ def demo_complex_gui_automation() -> None:
             s.write(cmd)
             s.press("Enter")
             sleep(0.5)
+
+        # Get terminal window and activate it
+        terminal_windows = s.get_application_windows("xfce4-terminal")
+        terminal_id = terminal_windows[0]
+        s.activate_window(terminal_id)
+
+        s.close_window(terminal_id)
 
         # Capture terminal output for later use
         print("📋 System analysis completed")
@@ -114,6 +115,8 @@ def demo_complex_gui_automation() -> None:
         for i in range(5):
             s.scroll(300, 300, direction="down", amount=10)
 
+        print("Launching xfce4-terminal for system analysis...")
+        s.launch("xfce4-terminal", wait_for_window=True)
         terminal_windows = s.get_application_windows("xfce4-terminal")
         terminal_id = terminal_windows[0]
         s.activate_window(terminal_id)
@@ -138,15 +141,15 @@ def demo_complex_gui_automation() -> None:
 
         # Launch LibreOffice Writer
         print("Launching LibreOffice Writer...")
-        s.launch("libreoffice --writer")
-        sleep(3)
-        s.press("Enter")
+        s.launch("libreoffice --writer", wait_for_window=True)
+        sleep(1)
 
         # Get Writer window and activate it
         writer_windows = s.get_application_windows("libreoffice")
         writer_id = writer_windows[0]
         s.activate_window(writer_id)
         sleep(1)
+        s.press("Enter")
 
         # Create a professional report
         report_content = [
@@ -178,11 +181,11 @@ def demo_complex_gui_automation() -> None:
             "Date: " + time.strftime("%Y-%m-%d %H:%M:%S"),
         ]
 
+        sleep(1)
         # Type the report content
         for line in report_content:
-            s.write(line, delay_in_ms=1)
+            s.write(line, delay_in_ms=10)
             s.press("Enter")
-            sleep(0.3)
 
         # Format the document (select all and apply formatting)
         s.press(["Ctrl", "A"])  # Select all
@@ -204,14 +207,7 @@ def demo_complex_gui_automation() -> None:
 
         # Launch LibreOffice Calc
         print("Launching LibreOffice Calc for data analysis...")
-        s.launch("libreoffice --calc")
-        sleep(1)
-
-        # Get Calc window and activate it
-        calc_windows = s.get_application_windows("libreoffice")
-        calc_id = calc_windows[1]
-        s.activate_window(calc_id)
-        sleep(1)
+        s.launch("libreoffice --calc", wait_for_window=True)
 
         # Create sample data for analysis
         sample_data = [
