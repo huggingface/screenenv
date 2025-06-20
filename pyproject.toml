@@ -1,0 +1,98 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "screenenv"
+version = "0.1.0"
+description = "A powerful Python library for creating and managing isolated desktop environments using Docker containers"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "ScreenEnv Contributors"}
+]
+keywords = ["docker", "automation", "gui", "sandbox", "desktop", "playwright"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Testing",
+    "Topic :: System :: Emulators",
+    "Topic :: Desktop Environment",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "pydantic>=2.11.7",
+    "psutil>=7.0.0",
+    "docker>=7.1.0",
+    "filelock>=3.18.0",
+    "playwright>=1.52.0",
+    "fastapi>=0.115.13",
+    "requests>=2.32.4",
+    "uvicorn>=0.15.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+]
+test = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/huggingface/screenenv"
+Repository = "https://github.com/huggingface/screenenv"
+Documentation = "https://github.com/huggingface/screenenv#readme"
+Issues = "https://github.com/huggingface/screenenv/issues"
+
+[project.scripts]
+screenenv = "screenenv.sandbox_demo:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/screenenv"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/README.md",
+    "/LICENSE",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/migrations/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+] 

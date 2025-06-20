@@ -4,12 +4,12 @@ from contextlib import contextmanager
 from client.sandbox import Sandbox
 
 
-def sleep():
+def sleep(seconds: float = 1.0) -> None:
     time.sleep(1)
 
 
 @contextmanager
-def recording():
+def recording() -> Generator[Sandbox, None, None]:
     try:
         s = Sandbox(headless=False)
         resp = s.start_recording()
@@ -23,7 +23,7 @@ def recording():
         # s.close()
 
 
-def test_with_xfce4_terminal():
+def test_with_xfce4_terminal() -> None:
     s = Sandbox()
     try:
         print("Testing start_and_end_recording...")
@@ -94,7 +94,7 @@ def test_with_xfce4_terminal():
         s.close()
 
 
-def test_sandbox_misc_functions():
+def test_sandbox_misc_functions() -> None:
     s = Sandbox()
     try:
         print("Testing start_and_end_recording...")

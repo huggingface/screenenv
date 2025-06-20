@@ -1,0 +1,21 @@
+name: 'Setup UV'
+description: 'Install UV and set up the virtual environment'
+
+runs:
+  using: composite
+  steps:
+    - name: Install uv
+      shell: bash
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        uv sync --all-extras --all-groups
+
+    - name: Install screensuite in editable mode
+      shell: bash
+      run: |
+        uv pip install -e .

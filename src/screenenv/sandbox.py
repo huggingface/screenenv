@@ -21,13 +21,13 @@ from urllib.parse import urlparse
 
 from .remote_provider import DockerProviderConfig, create_remote_env_provider
 from .retry_decorator import retry
-from dockerfiles.desktop.request_models import (
+from screenenv.request_models import (
     CommandRequest,
     DirectoryRequest,
     FileRequest,
     DownloadRequest,
 )
-from dockerfiles.desktop.response_models import (
+from screenenv.response_models import (
     CommandResponse,
     StatusEnum,
     PlatformResponse,
@@ -50,7 +50,7 @@ Params = dict[str, int | str]
 # Screen size options for desktop environments
 ScreenSize = Literal[
     # Standard Desktop Resolutions
-    "1920x1080",  # Full HD (most common)
+    "1920x1080",  # Full HD (current default)
     "1366x768",  # HD (laptop standard)
     "2560x1440",  # 2K/QHD
     "3840x2160",  # 4K/UHD
@@ -60,7 +60,6 @@ ScreenSize = Literal[
     "2560x1600",  # WQXGA
     "3440x1440",  # Ultrawide QHD
     "5120x1440",  # Super Ultrawide
-    "1920x600",  # Custom wide (current default)
     # Mobile/Tablet Resolutions
     "1024x768",  # iPad (portrait)
     "768x1024",  # iPad (landscape)

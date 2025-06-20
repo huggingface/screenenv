@@ -1,16 +1,16 @@
 import time
 from contextlib import contextmanager
 
-from client.sandbox import Sandbox
+from screenenv.sandbox import Sandbox
 
 
-def sleep(seconds=1.0):
+def sleep(seconds: float = 1.0) -> None:
     """Wait for specified seconds to make actions visible"""
     time.sleep(seconds)
 
 
 @contextmanager
-def recording():
+def recording() -> Generator[Sandbox, None, None]:
     """Context manager for recording the demo"""
     try:
         s = Sandbox(headless=False)
@@ -34,7 +34,7 @@ def input_number() -> tuple[int, int]:
     return first_number, second_number
 
 
-def demo_complex_gui_automation():
+def demo_complex_gui_automation() -> None:
     """
     🚀 EXPERT GUI AGENT DEMO: Multi-Application Workflow Automation
 

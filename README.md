@@ -57,16 +57,16 @@ sandbox = Sandbox(
 try:
     # Launch a terminal
     sandbox.launch("xfce4-terminal")
-    
+
     # Type some text
     sandbox.write("echo 'Hello from ScreenEnv!'")
     sandbox.press("Enter")
-    
+
     # Take a screenshot
     screenshot = sandbox.screenshot()
     with open("screenshot.png", "wb") as f:
         f.write(screenshot)
-        
+
 finally:
     # Clean up
     sandbox.close()
@@ -180,7 +180,7 @@ response = sandbox.execute_python_command("print('Hello')", ["os"])
 print(response.output)
 
 # Get terminal output
-output = sandbox.get_terminal_output()
+output = sandbox.get_terminal_output() # Only if a desktop terminal application is running. To get command output, use execute_command() instead.
 ```
 
 ## Examples
@@ -193,25 +193,25 @@ import time
 
 def demo_automation():
     sandbox = Sandbox(headless=False)
-    
+
     try:
         # Launch terminal
         sandbox.launch("xfce4-terminal")
         time.sleep(2)
-        
+
         # Type commands
         sandbox.write("echo 'Starting automation demo'")
         sandbox.press("Enter")
-        
+
         # Open web browser
         sandbox.open("https://www.python.org")
         time.sleep(3)
-        
+
         # Take screenshot
         screenshot = sandbox.screenshot()
         with open("demo_screenshot.png", "wb") as f:
             f.write(screenshot)
-            
+
     finally:
         sandbox.close()
 
@@ -226,16 +226,16 @@ from client.sandbox import Sandbox
 
 def web_automation():
     sandbox = Sandbox(headless=True)
-    
+
     try:
         # Open website
         sandbox.open("https://www.example.com")
-        
+
         # Take browser screenshot
         screenshot = sandbox.playwright_screenshot(full_page=True)
         with open("web_screenshot.png", "wb") as f:
             f.write(screenshot)
-            
+
     finally:
         sandbox.close()
 ```
