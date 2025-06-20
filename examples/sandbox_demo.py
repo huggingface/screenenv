@@ -210,6 +210,7 @@ def demo_complex_gui_automation() -> None:
         # Launch LibreOffice Calc
         print("Launching LibreOffice Calc for data analysis...")
         s.launch("libreoffice --calc", wait_for_window=True)
+        sleep(1)
 
         # Create sample data for analysis
         sample_data = [
