@@ -100,10 +100,11 @@ def demo_complex_gui_automation() -> None:
         print("\n🌐 PHASE 2: Web Research & Data Collection")
 
         # Open multiple research tabs
-        print("Opening https://www.stackoverflow.com for research...")
+        print("Opening https://www.huggingface.co for research...")
         s.open("https://www.huggingface.co/")
         sleep(1)
         s.move_mouse(1200, 120)
+        sleep(0.5)
         s.left_click()
         sleep(1)
         s.move_mouse(1200, 160)
