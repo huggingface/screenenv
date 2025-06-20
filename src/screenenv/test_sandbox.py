@@ -160,19 +160,19 @@ def test_sandbox_misc_functions() -> None:
 
         print("Testing desktop_screenshot...")
         try:
-            img = s.desktop_screenshot()
+            desktop_img = s.desktop_screenshot()
             with open("desktop_screenshot.png", "wb") as f:
-                f.write(img)
+                f.write(desktop_img)
         except Exception as e:
             print("desktop_screenshot failed:", e)
         sleep()
 
         print("Testing playwright_screenshot...")
         try:
-            img = s.playwright_screenshot()
-            if img:
+            playwright_img = s.playwright_screenshot()
+            if playwright_img is not None:
                 with open("playwright_screenshot.png", "wb") as f:
-                    f.write(img)
+                    f.write(playwright_img)
         except Exception as e:
             print("playwright_screenshot failed:", e)
         sleep()
@@ -184,13 +184,6 @@ def test_sandbox_misc_functions() -> None:
         print("Testing wait...")
         s.wait(100)
         print("Waited 100ms")
-        sleep()
-
-        print("Testing open_chrome (dummy)...")
-        try:
-            print(s.open_chrome("https://www.example.com"))
-        except Exception as e:
-            print("open_chrome failed:", e)
         sleep()
 
         print("Testing screenshot...")
