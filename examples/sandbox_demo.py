@@ -302,7 +302,7 @@ def demo_complex_gui_automation() -> None:
         # Take final screenshots of all applications
         # Use correct browser name based on architecture
         # x86_64 uses "google-chrome", aarch64 uses "chromium"
-        applications = ["chromium", "libreoffice"]
+        applications = ["chromium", "google-chrome", "libreoffice"]
 
         for app in applications:
             try:
