@@ -61,6 +61,7 @@ def demo_complex_gui_automation() -> None:
         # Launch terminal and perform system analysis
         print("Launching xfce4-terminal for system analysis...")
         s.launch("xfce4-terminal", wait_for_window=True)
+        sleep(1)
 
         # Perform comprehensive system analysis
         system_commands = [
@@ -117,9 +118,7 @@ def demo_complex_gui_automation() -> None:
 
         print("Launching xfce4-terminal for system analysis...")
         s.launch("xfce4-terminal", wait_for_window=True)
-        terminal_windows = s.get_application_windows("xfce4-terminal")
-        terminal_id = terminal_windows[0]
-        s.activate_window(terminal_id)
+        sleep(1)
 
         # Write an enthusiastic AI comment about HuggingFace
         s.press("Enter")
@@ -129,6 +128,9 @@ def demo_complex_gui_automation() -> None:
         )
         sleep(2)
         s.write(" Hmmmm... Jokes aside, back to work! An AI's job is never done... 🤖")
+        terminal_windows = s.get_application_windows("xfce4-terminal")
+        terminal_id = terminal_windows[0]
+        s.activate_window(terminal_id)
         s.close_window(terminal_id)
         s.press(["Ctrl", "W"])
 
