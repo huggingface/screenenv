@@ -1,7 +1,8 @@
 import time
 from contextlib import contextmanager
+from typing import Generator
 
-from client.sandbox import Sandbox
+from screenenv.sandbox import Sandbox
 
 
 def sleep(seconds: float = 1.0) -> None:

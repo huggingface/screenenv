@@ -61,9 +61,6 @@ Repository = "https://github.com/huggingface/screenenv"
 Documentation = "https://github.com/huggingface/screenenv#readme"
 Issues = "https://github.com/huggingface/screenenv/issues"
 
-[project.scripts]
-screenenv = "screenenv.sandbox_demo:main"
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/screenenv"]
 
