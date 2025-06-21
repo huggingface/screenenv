@@ -41,18 +41,15 @@ A powerful Python library for creating and managing isolated desktop environment
    pip install -e .
    ```
 
+> For usage, see the source code in `examples/sandbox_demo.py`
+
 ### Basic Usage
 
 ```python
-from client.sandbox import Sandbox
+from screenenv import Sandbox
 
 # Create a sandbox environment
-sandbox = Sandbox(
-    os_type="Ubuntu",
-    provider_type="docker",
-    headless=False,  # Set to True for headless mode
-    screen_size="1920x1080"
-)
+sandbox = Sandbox()
 
 try:
     # Launch a terminal
@@ -77,7 +74,7 @@ finally:
 ### Basic Configuration
 
 ```python
-from client.sandbox import Sandbox
+from screenenv import Sandbox
 
 # Minimal configuration
 sandbox = Sandbox()
@@ -188,7 +185,7 @@ output = sandbox.get_terminal_output() # Only if a desktop terminal application 
 ### Complete GUI Automation Demo
 
 ```python
-from client.sandbox import Sandbox
+from screenenv import Sandbox
 import time
 
 def demo_automation():
@@ -222,7 +219,7 @@ if __name__ == "__main__":
 ### Web Automation with Playwright
 
 ```python
-from client.sandbox import Sandbox
+from screenenv import Sandbox
 
 def web_automation():
     sandbox = Sandbox(headless=True)
@@ -235,6 +232,8 @@ def web_automation():
         screenshot = sandbox.playwright_screenshot(full_page=True)
         with open("web_screenshot.png", "wb") as f:
             f.write(screenshot)
+
+        playwright_browser = sandbox.playwright_browser()
 
     finally:
         sandbox.close()
@@ -266,28 +265,8 @@ The sandbox uses a custom Ubuntu 22.04 Docker image with:
    ```bash
    # Start Docker service
    sudo systemctl start docker
+   sudo python3 -m examples.sandbox_demo
    ```
 
-2. **Port conflicts**:
-   - The sandbox uses ports 5000, 8006, and 9222
-   - Ensure these ports are available
-
-3. **Memory issues**:
-   - Increase Docker memory limit
-   - Use headless mode to reduce resource usage
-
-4. **VNC connection issues**:
-   - Check if port 8006 is accessible
+2. **VNC connection issues**:
    - Try disabling SSL with `auto_ssl=False`
-
-### Debug Mode
-
-Enable debug logging:
-```python
-import logging
-logging.getLogger().setLevel(logging.DEBUG)
-
-sandbox = Sandbox()
-```
-
-> For usage, see the source code in `client/sandbox_demo.py`
