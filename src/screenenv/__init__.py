@@ -2,9 +2,10 @@ import logging
 import sys
 from datetime import datetime
 
+from .remote_env import RemoteEnv
 from .sandbox import Sandbox
 
-__all__ = ["Sandbox"]
+__all__ = ["Sandbox", "RemoteEnv"]
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)

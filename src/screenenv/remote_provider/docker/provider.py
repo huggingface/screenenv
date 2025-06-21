@@ -31,7 +31,7 @@ class DockerProviderConfig(BaseModel):
     healthcheck_endpoint: str | None
     healthcheck_port: int | None
     healthcheck_retry_interval: int = 10
-    healthcheck_headers: dict[str, str] = {}
+    healthcheck_headers: dict[str, str] | None = None
     environment: dict[str, str] = {
         "DISK_SIZE": "32G",
         "RAM_SIZE": "4G",
@@ -119,7 +119,11 @@ class DockerProvider(Provider):
                 response = requests.get(
                     f"http://localhost:{self.ports[self.config.healthcheck_port]}/{self.config.healthcheck_endpoint.lstrip('/')}",
                     timeout=(10, 10),
-                    headers=self.config.healthcheck_headers,
+                    headers=(
+                        self.config.healthcheck_headers
+                        if self.config.healthcheck_headers
+                        else None
+                    ),
                 )
                 return response.status_code == 200
             except Exception:

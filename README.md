@@ -236,6 +236,9 @@ def web_automation():
         with open("web_screenshot.png", "wb") as f:
             f.write(screenshot)
 
+        # Get playwright browser
+        source = sandbox.get_playwright_browser()
+
     finally:
         sandbox.close()
 ```

@@ -1,0 +1,317 @@
+# isort: skip_file
+
+import logging
+import os
+import uuid
+import subprocess
+import webbrowser
+from typing import Literal, Optional
+
+
+from .remote_provider import (
+    DockerProviderConfig,
+    create_remote_env_provider,
+    IPAddr,
+    ProviderClient,
+)
+
+logger = logging.getLogger(__name__)
+
+# Screen size options for desktop environments
+ScreenSize = Literal[
+    # Standard Desktop Resolutions
+    "1920x1080",  # Full HD (current default)
+    "1366x768",  # HD (laptop standard)
+    "2560x1440",  # 2K/QHD
+    "3840x2160",  # 4K/UHD
+    "1280x720",  # HD Ready
+    "1600x900",  # HD+
+    "1920x1200",  # WUXGA
+    "2560x1600",  # WQXGA
+    "3440x1440",  # Ultrawide QHD
+    "5120x1440",  # Super Ultrawide
+    # Mobile/Tablet Resolutions
+    "1024x768",  # iPad (portrait)
+    "768x1024",  # iPad (landscape)
+    "360x640",  # Mobile portrait
+    "640x360",  # Mobile landscape
+    # Legacy Resolutions
+    "1024x600",  # Netbook
+    "800x600",  # SVGA
+    "640x480",  # VGA
+    # Additional Common Resolutions
+    "1440x900",  # Custom laptop
+    "1680x1050",  # WSXGA+
+    "1920x1440",  # Custom 4:3 ratio
+    "2560x1080",  # Ultrawide Full HD
+    "3440x1440",  # Ultrawide QHD
+    "3840x1080",  # Super Ultrawide Full HD
+]
+
+
+class ScreenRemoteEnv:
+    """Base class for managing Docker remote environments and services"""
+
+    session_password: str | None
+    auto_ssl: bool
+    ssl_cert_file: str | None
+    headless: bool
+    novnc_server: bool  # if True, VNC server is enabled. If False, VNC server is disabled and headless is set to True
+    session_password: str | None  # if True, a random password is generated
+    environment: dict[str, str]
+    volumes: list[str]
+    provider: ProviderClient
+    ip_addr: IPAddr
+    base_url: str
+    server_port: int
+    chromium_port: int
+    vnc_port: int | None
+    vnc_url: str | None
+
+    def __init__(
+        self,
+        os_type: Literal["Ubuntu", "Windows", "MacOS"] = "Ubuntu",
+        provider_type: Literal["docker", "aws", "hf_inference_endpoint"] = "docker",
+        volumes: list[str] = [],
+        headless: bool = True,
+        auto_ssl: bool = False,
+        novnc_server: bool = True,
+        session_password: str | bool = True,
+        screen_size: ScreenSize = "1920x1080",
+        disk_size: str = "32G",
+        ram_size: str = "4G",
+        cpu_cores: str = "4",
+        server_type: str = "fastapi",
+        shm_size: str = "4g",
+    ):
+        """
+        Initialize the remote environment with Docker configuration.
+
+        Args:
+            os_type: Operating system type (currently only Ubuntu supported)
+            provider_type: Provider type (currently only docker supported)
+            volumes: List of volumes to mount
+            headless: Whether to run in headless mode
+            auto_ssl: Whether to enable SSL for VNC
+            screen_size: Screen resolution
+            disk_size: Disk size for the environment
+            ram_size: RAM size for the environment
+            cpu_cores: Number of CPU cores
+            server_type: Type of server to run (fastapi, mcp, etc.)
+            shm_size: Shared memory size
+            image: Docker image to use (defaults based on os_type)
+            ports_to_forward: Ports to forward (defaults based on os_type)
+            healthcheck_endpoint: Health check endpoint
+            healthcheck_port: Health check port
+            healthcheck_retry_interval: Health check retry interval
+        """
+        logger.info(
+            "Setting up remote environment using Docker - Initial setup may take 5-10 minutes. Please wait..."
+        )
+
+        # Set default environment variables
+        self.environment = {
+            "DISK_SIZE": disk_size,
+            "RAM_SIZE": ram_size,
+            "CPU_CORES": cpu_cores,
+            "SCREEN_SIZE": f"{screen_size}x24",
+            "SERVER_TYPE": server_type,
+        }
+
+        if not novnc_server:
+            self.environment["NOVNC_SERVER_ENABLED"] = "false"
+        else:
+            self.environment["NOVNC_SERVER_ENABLED"] = "true"
+
+        # Generate session password for authentication
+        if session_password:
+            self.session_password: str | None = (
+                uuid.uuid4().hex if session_password is True else session_password
+            )
+            self.environment["SESSION_PASSWORD"] = self.session_password
+        else:
+            self.session_password = None
+            logger.warning(
+                "No session password provided, connection will not be authenticated"
+            )
+
+        self.auto_ssl = auto_ssl
+        self.ssl_cert_file: Optional[str] = None
+        self.headless = headless
+        self.volumes = volumes
+
+        # Handle SSL certificate generation if enabled
+        if self.auto_ssl:
+            try:
+                self.ssl_cert_file = self._generate_ssl_certificate()
+                # Read the certificate content and pass it as environment variable
+                with open(self.ssl_cert_file, "r") as f:
+                    cert_content = f.read()
+                self.environment["SSL_ENABLED"] = "true"
+                self.environment["SSL_CERT_CONTENT"] = cert_content
+                # Keep the certificate file for browser use
+                logger.info(f"SSL certificate generated at: {self.ssl_cert_file}")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to generate SSL certificate, falling back to non-SSL mode: {e}"
+                )
+                self.auto_ssl = False
+                if self.ssl_cert_file and os.path.exists(self.ssl_cert_file):
+                    os.unlink(self.ssl_cert_file)
+                self.ssl_cert_file = None
+
+        server_port: int = 5000
+        vnc_port: int = 8006
+        chromium_port: int = 9222
+
+        ports_to_forward = (
+            {server_port, vnc_port, chromium_port}
+            if novnc_server
+            else {server_port, chromium_port}
+        )
+
+        # Configure provider based on OS type
+        if os_type == "Ubuntu":
+            if provider_type == "docker":
+                config = DockerProviderConfig(
+                    ports_to_forward=ports_to_forward,
+                    image="huggingface/ubuntu_xfce4:latest",
+                    healthcheck_endpoint="/screenshot",
+                    healthcheck_port=5000,
+                    healthcheck_retry_interval=10,
+                    healthcheck_headers=(
+                        {"X-Session-Password": self.session_password}
+                        if self.session_password is not None
+                        else None
+                    ),
+                    volumes=volumes,
+                    shm_size=shm_size,
+                    environment=self.environment,
+                )
+            else:
+                raise NotImplementedError(
+                    f"Provider type {provider_type} not implemented"
+                )
+        else:
+            raise NotImplementedError(f"OS type {os_type} not implemented")
+
+        # Create and start the provider
+        self.provider = create_remote_env_provider(config=config)
+        self.provider.start_emulator()
+
+        # Get IP address and set up base URL
+        self.ip_addr = self.provider.get_ip_address()
+        self.base_url = (
+            f"http://{self.ip_addr.ip_address}:{self.ip_addr.host_port[server_port]}"
+        )
+
+        # Store port mappings for easy access
+        self.server_port = self.ip_addr.host_port[server_port]
+        self.chromium_port = self.ip_addr.host_port[chromium_port]
+        self.vnc_port = self.ip_addr.host_port[vnc_port] if not headless else None
+
+        if self.vnc_server:
+            # Use HTTPS when SSL is enabled (certificate is handled by noVNC in container)
+            vnc_protocol = "https" if self.auto_ssl else "http"
+            # Connect to the container's exposed port from the host
+            self.vnc_url = f"{vnc_protocol}://{self.ip_addr.ip_address}:{self.vnc_port}/vnc.html?host={self.ip_addr.ip_address}&port={self.vnc_port}&autoconnect=true"
+            if self.session_password is not None:
+                self.vnc_url += f"&password={self.session_password}"
+            logger.info(
+                f"Opening VNC connection with {'SSL enabled' if self.auto_ssl else 'SSL disabled'}"
+            )
+
+            if not headless:
+                webbrowser.open(self.vnc_url)
+
+    def _generate_ssl_certificate(self) -> str:
+        """Generate a temporary SSL certificate for VNC"""
+        # Create certificate in a location that Docker can access
+        cert_dir = os.path.expanduser("~/screenenv_certs")
+        os.makedirs(cert_dir, exist_ok=True)
+
+        cert_file = os.path.join(cert_dir, f"cert_{uuid.uuid4().hex}.pem")
+
+        try:
+            subprocess.run(
+                [
+                    "openssl",
+                    "req",
+                    "-x509",
+                    "-newkey",
+                    "rsa:4096",
+                    "-keyout",
+                    cert_file,
+                    "-out",
+                    cert_file,
+                    "-days",
+                    "365",
+                    "-nodes",
+                    "-subj",
+                    "/C=US/ST=State/L=City/O=Organization/CN=*",
+                ],
+                check=True,
+            )
+            logger.info("Generated SSL certificate: %s", cert_file)
+            return cert_file
+        except subprocess.CalledProcessError:
+            if os.path.exists(cert_file):
+                os.unlink(cert_file)
+            raise RuntimeError("Failed to generate SSL certificate")
+
+    def get_ip_address(self):
+        """Get the IP address and port mappings of the environment"""
+        return self.provider.get_ip_address()
+
+    def get_base_url(self) -> str:
+        """Get the base URL for API requests"""
+        return self.base_url
+
+    def get_session_password(self) -> str:
+        """Get the session password for authentication"""
+        return self.session_password
+
+    def get_chromium_port(self) -> int:
+        """Get the Chromium debugging port"""
+        return self.chromium_port
+
+    def get_vnc_port(self) -> Optional[int]:
+        """Get the VNC port (None if headless)"""
+        return self.vnc_port
+
+    def get_vnc_url(self) -> Optional[str]:
+        """Get the VNC URL (None if headless)"""
+        return getattr(self, "vnc_url", None)
+
+    def reset(self):
+        """Reset the environment"""
+        self.provider.reset()
+
+    def close(self) -> None:
+        """Close the environment and clean up resources"""
+        # Clean up SSL certificate if it exists
+        if (
+            hasattr(self, "ssl_cert_file")
+            and self.ssl_cert_file
+            and os.path.exists(self.ssl_cert_file)
+        ):
+            try:
+                os.unlink(self.ssl_cert_file)
+                logger.info(f"Cleaned up SSL certificate: {self.ssl_cert_file}")
+            except Exception as e:
+                logger.warning(f"Failed to clean up SSL certificate: {e}")
+
+        # Stop the provider
+        self.provider.stop_emulator()
+
+    def kill(self) -> None:
+        """Kill the environment (alias for close)"""
+        self.close()
+
+    def __enter__(self):
+        """Context manager entry"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit"""
+        self.close()

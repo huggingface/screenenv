@@ -4,12 +4,9 @@ import logging
 import os
 import time
 import shlex
-from typing import Any, Callable, Literal, Optional
-import uuid
-import subprocess
+from typing import Any, Callable, Literal, Optional, List
 
 import requests
-import webbrowser
 import json
 from playwright.sync_api import (
     sync_playwright,
@@ -19,8 +16,8 @@ from playwright.sync_api import (
 )
 from urllib.parse import urlparse
 
-from .remote_provider import DockerProviderConfig, create_remote_env_provider
-from .retry_decorator import retry
+from screenenv.remote_env import ScreenRemoteEnv, ScreenSize
+from screenenv.retry_decorator import retry
 from screenenv.request_models import (
     CommandRequest,
     DirectoryRequest,
@@ -47,163 +44,68 @@ logger = logging.getLogger(__name__)
 
 Params = dict[str, int | str]
 
-# Screen size options for desktop environments
-ScreenSize = Literal[
-    # Standard Desktop Resolutions
-    "1920x1080",  # Full HD (current default)
-    "1366x768",  # HD (laptop standard)
-    "2560x1440",  # 2K/QHD
-    "3840x2160",  # 4K/UHD
-    "1280x720",  # HD Ready
-    "1600x900",  # HD+
-    "1920x1200",  # WUXGA
-    "2560x1600",  # WQXGA
-    "3440x1440",  # Ultrawide QHD
-    "5120x1440",  # Super Ultrawide
-    # Mobile/Tablet Resolutions
-    "1024x768",  # iPad (portrait)
-    "768x1024",  # iPad (landscape)
-    "360x640",  # Mobile portrait
-    "640x360",  # Mobile landscape
-    # Legacy Resolutions
-    "1024x600",  # Netbook
-    "800x600",  # SVGA
-    "640x480",  # VGA
-    # Additional Common Resolutions
-    "1440x900",  # Custom laptop
-    "1680x1050",  # WSXGA+
-    "1920x1440",  # Custom 4:3 ratio
-    "2560x1080",  # Ultrawide Full HD
-    "3440x1440",  # Ultrawide QHD
-    "3840x1080",  # Super Ultrawide Full HD
-]
 
-
-class Sandbox:
+class Sandbox(ScreenRemoteEnv):
     """Client for interacting with the Android environment server"""
+
+    retry_times: int
+    retry_interval: int
+    pkgs_to_install: List[str]
+    browser: Optional[Browser]
+    chromium_context: Optional[BrowserContext]
+    _playwright: Optional[Playwright]
 
     def __init__(
         self,
         os_type: Literal["Ubuntu", "Windows", "MacOS"] = "Ubuntu",
-        provider_type: Literal["docker", "aws", "hf"] = "docker",
+        provider_type: Literal["docker", "aws", "hf_inference_endpoint"] = "docker",
         volumes: list[str] = [],
         headless: bool = True,
         auto_ssl: bool = False,
         screen_size: ScreenSize = "1920x1080",
+        disk_size: str = "32G",
+        ram_size: str = "4G",
+        cpu_cores: str = "4",
+        server_type: str = "fastapi",
+        shm_size: str = "4g",
     ):
-        logger.info(
-            "Setting up Android environment using Docker - Initial setup may take 5-10 minutes. Please wait..."
+        # Initialize the base RemoteEnv class
+        super().__init__(
+            os_type=os_type,
+            provider_type=provider_type,
+            volumes=volumes,
+            headless=headless,
+            auto_ssl=auto_ssl,
+            screen_size=screen_size,
+            disk_size=disk_size,
+            ram_size=ram_size,
+            cpu_cores=cpu_cores,
+            server_type=server_type,
+            shm_size=shm_size,
         )
-        self.session_password = uuid.uuid4().hex
-        self.auto_ssl = auto_ssl
-        self.ssl_cert_file: Optional[str] = None
-        self.environment = {
-            "DISK_SIZE": "32G",
-            "RAM_SIZE": "4G",
-            "CPU_CORES": "4",
-            "SESSION_PASSWORD": self.session_password,
-            "SCREEN_SIZE": f"{screen_size}x24",
-        }
 
-        self.volumes = volumes
-        if self.auto_ssl:
-            try:
-                self.ssl_cert_file = self._generate_ssl_certificate()
-                # Read the certificate content and pass it as environment variable
-                with open(self.ssl_cert_file, "r") as f:
-                    cert_content = f.read()
-                self.environment["SSL_ENABLED"] = "true"
-                self.environment["SSL_CERT_CONTENT"] = cert_content
-                # Keep the certificate file for browser use
-                logger.info(f"SSL certificate generated at: {self.ssl_cert_file}")
-            except Exception as e:
-                logger.warning(
-                    f"Failed to generate SSL certificate, falling back to non-SSL mode: {e}"
-                )
-                self.auto_ssl = False
-                if self.ssl_cert_file and os.path.exists(self.ssl_cert_file):
-                    os.unlink(self.ssl_cert_file)
-                self.ssl_cert_file = None
-
-        if os_type == "Ubuntu":
-            if provider_type == "docker":
-                config = DockerProviderConfig(
-                    ports_to_forward={5000, 8006, 9222},
-                    image="huggingface/ubuntu_xfce4:latest",
-                    healthcheck_endpoint="/screenshot",
-                    healthcheck_port=5000,
-                    healthcheck_retry_interval=10,
-                    healthcheck_headers={"X-Session-Password": self.session_password},
-                    volumes=volumes,
-                    shm_size="4g",
-                    environment=self.environment,
-                )
-            else:
-                raise NotImplementedError(
-                    f"Provider type {provider_type} not implemented"
-                )
-        else:
-            raise NotImplementedError(f"OS type {os_type} not implemented")
-
-        self.provider = create_remote_env_provider(config=config)
-        self.provider.start_emulator()
-        ip_addr = self.provider.get_ip_address()
-        self.base_url = f"http://{ip_addr.ip_address}:{ip_addr.host_port[5000]}"
+        # Initialize Sandbox-specific attributes
         self.retry_times = 10
         self.retry_interval = 5
         self.pkgs_to_install: list[str] = []
 
-        self.chromium_port = ip_addr.host_port[9222]
+        # Initialize Playwright browser attributes
         self.browser: Optional[Browser] = None
         self.chromium_context: Optional[BrowserContext] = None
         self._playwright: Optional[Playwright] = None
-        self.headless = headless
-        if not headless:
-            self.vnc_port = ip_addr.host_port[8006]
-            # Use HTTPS when SSL is enabled (certificate is handled by noVNC in container)
-            vnc_protocol = "https" if self.auto_ssl else "http"
-            # Connect to the container's exposed port from the host
-            self.vnc_url = f"{vnc_protocol}://{ip_addr.ip_address}:{self.vnc_port}/vnc.html?host={ip_addr.ip_address}&port={self.vnc_port}&autoconnect=true&password={self.session_password}"
-            logger.info(
-                f"Opening VNC connection with {'SSL enabled' if self.auto_ssl else 'SSL disabled'}"
-            )
 
-            webbrowser.open(self.vnc_url)
-
-    def _generate_ssl_certificate(self) -> str:
-        """Generate a temporary SSL certificate for VNC"""
-        # Create certificate in a location that Docker can access
-        cert_dir = os.path.expanduser("~/screenenv_certs")
-        os.makedirs(cert_dir, exist_ok=True)
-
-        cert_file = os.path.join(cert_dir, f"cert_{uuid.uuid4().hex}.pem")
-
-        try:
-            subprocess.run(
-                [
-                    "openssl",
-                    "req",
-                    "-x509",
-                    "-newkey",
-                    "rsa:4096",
-                    "-keyout",
-                    cert_file,
-                    "-out",
-                    cert_file,
-                    "-days",
-                    "365",
-                    "-nodes",
-                    "-subj",
-                    "/C=US/ST=State/L=City/O=Organization/CN=*",
-                ],
-                check=True,
-            )
-            logger.info("Generated SSL certificate: %s", cert_file)
-            return cert_file
-        except subprocess.CalledProcessError:
-            if os.path.exists(cert_file):
-                os.unlink(cert_file)
-            raise RuntimeError("Failed to generate SSL certificate")
+    def get_playwright_browser(self) -> Browser | None:
+        if self.browser is None:
+            logger.info("No browser found, trying to open a www.google.com")
+            self.open("https://www.google.com")
+            time.sleep(1)
+            if self.browser is None:
+                logger.error("Failed to open a browser")
+                return None
+            else:
+                logger.info("Browser opened successfully")
+                return self.browser
+        return self.browser
 
     @retry(retry_times=10, retry_interval=5.0)
     def _make_request(
@@ -246,7 +148,7 @@ class Sandbox:
 
     # Chrome setup
     def _chrome_open_tabs_setup(self, urls_to_open: list[str]) -> None:
-        host = self.provider.get_ip_address().ip_address
+        host = self.ip_addr.ip_address
         port = self.chromium_port
 
         remote_debugging_url = f"http://{host}:{port}"
@@ -753,19 +655,8 @@ class Sandbox:
         if self._playwright is not None:
             self._playwright.stop()
 
-        # Clean up SSL certificate if it exists
-        if (
-            hasattr(self, "ssl_cert_file")
-            and self.ssl_cert_file
-            and os.path.exists(self.ssl_cert_file)
-        ):
-            try:
-                os.unlink(self.ssl_cert_file)
-                logger.info(f"Cleaned up SSL certificate: {self.ssl_cert_file}")
-            except Exception as e:
-                logger.warning(f"Failed to clean up SSL certificate: {e}")
-
-        self.provider.stop_emulator()
+        # Call parent close method to clean up Docker environment
+        super().close()
 
     def kill(self) -> None:
         """Kill the environment"""
