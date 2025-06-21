@@ -1,4 +1,3 @@
-import logging
 import os
 import platform
 import time
@@ -12,13 +11,14 @@ from docker.models.containers import Container
 from filelock import FileLock
 from pydantic import BaseModel, model_validator
 
-from ..provider import IPAddr, Provider
+from screenenv.logger import get_logger
 
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+from ..provider import IPAddr, Provider
 
 WAIT_TIME = 3
 LOCK_TIMEOUT = 10
+
+logger = get_logger(__name__)
 
 
 class PortAllocationError(Exception):
@@ -31,7 +31,7 @@ class DockerProviderConfig(BaseModel):
     healthcheck_endpoint: str | None
     healthcheck_port: int | None
     healthcheck_retry_interval: int = 10
-    healthcheck_headers: dict[str, str] = {}
+    healthcheck_headers: dict[str, str] | None = None
     environment: dict[str, str] = {
         "DISK_SIZE": "32G",
         "RAM_SIZE": "4G",
@@ -119,7 +119,11 @@ class DockerProvider(Provider):
                 response = requests.get(
                     f"http://localhost:{self.ports[self.config.healthcheck_port]}/{self.config.healthcheck_endpoint.lstrip('/')}",
                     timeout=(10, 10),
-                    headers=self.config.healthcheck_headers,
+                    headers=(
+                        self.config.healthcheck_headers
+                        if self.config.healthcheck_headers
+                        else None
+                    ),
                 )
                 return response.status_code == 200
             except Exception:
@@ -152,7 +156,12 @@ class DockerProvider(Provider):
                     {
                         "image": self.config.image,
                         "environment": {
-                            k: "***" if "PASSWORD" in k or "SSL" in k else v
+                            k: "***"
+                            if any(
+                                word.lower() in k.lower()
+                                for word in ["password", "ssl", "cert", "key", "ssh"]
+                            )
+                            else v
                             for k, v in self.config.environment.items()
                         },
                         "cap_add": self.config.cap_add,

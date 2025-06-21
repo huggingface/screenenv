@@ -1,11 +1,12 @@
 import functools
-import logging
 import time
 from typing import Any, Callable, TypeVar, cast
 
-logger = logging.getLogger(__name__)
+from screenenv.logger import get_logger
 
 T = TypeVar("T")
+
+logger = get_logger(__name__)
 
 
 def retry(

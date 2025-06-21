@@ -1,3 +1,4 @@
+import os
 import time
 from contextlib import contextmanager
 from typing import Generator
@@ -278,8 +279,8 @@ def test_sandbox_misc_functions() -> None:
 
 if __name__ == "__main__":
     # Open in default web browser
-    # test_with_xfce4_terminal()
-    # test_sandbox_misc_functions()
+    test_with_xfce4_terminal()
+    test_sandbox_misc_functions()
     with recording() as s:
         # URL to your local noVNC tunnel
         # url = "http://localhost:8006/vnc.html?host=localhost&port=8006&autoconnect=true"
@@ -289,9 +290,9 @@ if __name__ == "__main__":
         s.open("https://www.wikipedia.org")
 
     # remove files created by test
-    # os.remove("dummy_README.md")
-    # os.remove("dummy_example.html")
-    # os.remove("desktop_screenshot.png")
-    # os.remove("playwright_screenshot.png")
-    # os.remove("test0.mp4")
-    # os.remove("test1.mp4")
+    os.remove("dummy_README.md")
+    os.remove("dummy_example.html")
+    os.remove("desktop_screenshot.png")
+    os.remove("playwright_screenshot.png")
+    os.remove("test0.mp4")
+    os.remove("test1.mp4")

@@ -1,12 +1,9 @@
-import logging
 from typing import Annotated, TypeAlias, overload
 
 from pydantic import Field
 
 from .docker.provider import DockerProvider, DockerProviderConfig
 from .provider import FakeProvider, FakeProviderConfig
-
-logger = logging.getLogger()
 
 ProviderConfig: TypeAlias = Annotated[
     DockerProviderConfig | FakeProviderConfig,

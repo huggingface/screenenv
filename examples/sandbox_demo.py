@@ -14,7 +14,7 @@ def sleep(seconds: float = 1.0) -> None:
 def recording() -> Generator[Sandbox, None, None]:
     """Context manager for recording the demo"""
     try:
-        s = Sandbox(headless=False)
+        s = Sandbox(headless=False, session_password=True)
         resp = s.start_recording()
         print("🎬 Recording started:", resp)
         yield s
