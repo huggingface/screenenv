@@ -3,7 +3,7 @@ from .create_remote_env import (
     ProviderConfig,
     create_remote_env_provider,
 )
-from .docker.provider import DockerProvider, DockerProviderConfig
+from .docker.provider import DockerProvider, DockerProviderConfig, HealthCheckConfig
 from .provider import FakeProvider, FakeProviderConfig, IPAddr
 
 __all__ = [
@@ -12,6 +12,7 @@ __all__ = [
     "FakeProviderConfig",
     "DockerProvider",
     "DockerProviderConfig",
+    "HealthCheckConfig",
     "ProviderConfig",
     "IPAddr",
     "ProviderClient",

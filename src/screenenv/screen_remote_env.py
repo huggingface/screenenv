@@ -11,11 +11,23 @@ from .remote_provider import (
     create_remote_env_provider,
     IPAddr,
     ProviderClient,
+    HealthCheckConfig,
 )
 
 from screenenv.logger import get_logger
 
 logger = get_logger(__name__)
+
+MCP_INIT_REQUEST = {
+    "jsonrpc": "2.0",
+    "method": "initialize",
+    "params": {
+        "clientInfo": {"name": "test-client", "version": "1.0"},
+        "protocolVersion": "2025-03-26",
+        "capabilities": {},
+    },
+    "id": "init-1",
+}
 
 # Screen size options for desktop environments
 ScreenSize = Literal[
@@ -152,13 +164,25 @@ class ScreenRemoteEnv:
         # Configure provider based on OS type
         if os_type == "Ubuntu":
             if provider_type == "docker":
+                healthcheck_config = HealthCheckConfig(
+                    endpoint=("/screenshot" if server_type == "fastapi" else "/mcp/"),
+                    port=5000,
+                    retry_interval=10,
+                    headers=(
+                        {"X-Session-Password": self.session_password}
+                        if server_type == "fastapi"
+                        else {
+                            "Accept": "application/json, text/event-stream",
+                            "Content-Type": "application/json",
+                        }
+                    ),
+                    json_data=(None if server_type == "fastapi" else MCP_INIT_REQUEST),
+                    method=("GET" if server_type == "fastapi" else "POST"),
+                )
                 config = DockerProviderConfig(
                     ports_to_forward=ports_to_forward,
                     image="huggingface/ubuntu_xfce4:latest",
-                    healthcheck_endpoint="/screenshot",
-                    healthcheck_port=5000,
-                    healthcheck_retry_interval=10,
-                    healthcheck_headers={"X-Session-Password": self.session_password},
+                    healthcheck_config=healthcheck_config,
                     volumes=volumes,
                     shm_size=shm_size,
                     environment=self.environment,
@@ -172,7 +196,12 @@ class ScreenRemoteEnv:
 
         # Create and start the provider
         self.provider = create_remote_env_provider(config=config)
-        self.provider.start_emulator()
+        try:
+            self.provider.start_emulator()
+        except (Exception, KeyboardInterrupt) as e:
+            logger.error(f"Error starting emulator: {e}")
+            self.provider.stop_emulator()
+            raise e
 
         # Get IP address and set up base URL
         self.ip_addr = self.provider.get_ip_address()

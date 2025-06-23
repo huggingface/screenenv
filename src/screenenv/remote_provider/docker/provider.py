@@ -2,7 +2,7 @@ import os
 import platform
 import time
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import psutil
 import requests
@@ -25,13 +25,19 @@ class PortAllocationError(Exception):
     pass
 
 
+class HealthCheckConfig(BaseModel):
+    endpoint: str | None = None
+    port: int | None = None
+    retry_interval: int = 10
+    headers: dict[str, str] | None = None
+    json_data: dict[str, Any] | None = None
+    method: Literal["GET", "POST"] = "GET"
+
+
 class DockerProviderConfig(BaseModel):
     PROVIDER_NAME: Literal["docker"] = "docker"
     ports_to_forward: set[int]
-    healthcheck_endpoint: str | None
-    healthcheck_port: int | None
-    healthcheck_retry_interval: int = 10
-    healthcheck_headers: dict[str, str] | None = None
+    healthcheck_config: HealthCheckConfig = HealthCheckConfig()
     environment: dict[str, str] = {
         "DISK_SIZE": "32G",
         "RAM_SIZE": "4G",
@@ -104,24 +110,30 @@ class DockerProvider(Provider):
 
         def check_health():
             if (
-                self.config.healthcheck_endpoint is None
-                or self.config.healthcheck_port is None
+                self.config.healthcheck_config.endpoint is None
+                or self.config.healthcheck_config.port is None
             ):
                 logger.warning(
                     "Healthcheck endpoint or port not set, skipping healthcheck: \n"
                     "healthcheck_endpoint: %s, \n"
                     "healthcheck_port: %s",
-                    self.config.healthcheck_endpoint,
-                    self.config.healthcheck_port,
+                    self.config.healthcheck_config.endpoint,
+                    self.config.healthcheck_config.port,
                 )
                 return True
             try:
-                response = requests.get(
-                    f"http://localhost:{self.ports[self.config.healthcheck_port]}/{self.config.healthcheck_endpoint.lstrip('/')}",
+                response = requests.request(
+                    method=self.config.healthcheck_config.method,
+                    url=f"http://localhost:{self.ports[self.config.healthcheck_config.port]}/{self.config.healthcheck_config.endpoint.lstrip('/')}",
                     timeout=(10, 10),
                     headers=(
-                        self.config.healthcheck_headers
-                        if self.config.healthcheck_headers
+                        self.config.healthcheck_config.headers
+                        if self.config.healthcheck_config.headers
+                        else None
+                    ),
+                    json=(
+                        self.config.healthcheck_config.json_data
+                        if self.config.healthcheck_config.json_data
                         else None
                     ),
                 )
@@ -136,7 +148,7 @@ class DockerProvider(Provider):
                 "🔄 Initializing virtual machine... %s seconds elapsed (this process may take a few minutes)",
                 int(time.time() - start_time),
             )
-            time.sleep(self.config.healthcheck_retry_interval)
+            time.sleep(self.config.healthcheck_config.retry_interval)
 
         raise TimeoutError("VM failed to become ready within timeout period")
 
