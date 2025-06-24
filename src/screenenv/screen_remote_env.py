@@ -182,7 +182,7 @@ class ScreenRemoteEnv:
                 )
                 config = DockerProviderConfig(
                     ports_to_forward=ports_to_forward,
-                    image="huggingface/ubuntu_xfce4:latest",
+                    image="amhma/ubuntu-desktop:22.04-0.0.1-dev",
                     healthcheck_config=healthcheck_config,
                     volumes=volumes,
                     shm_size=shm_size,
