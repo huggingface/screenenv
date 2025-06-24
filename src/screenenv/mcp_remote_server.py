@@ -6,7 +6,7 @@ from screenenv.screen_remote_env import ScreenRemoteEnv, ScreenSize
 logger = get_logger(__name__)
 
 
-class MCPRemoteServer(ScreenRemoteEnv):
+class MCPScreenRemoteServer(ScreenRemoteEnv):
     def __init__(
         self,
         os_type: Literal["Ubuntu", "Windows", "MacOS"] = "Ubuntu",
@@ -19,9 +19,9 @@ class MCPRemoteServer(ScreenRemoteEnv):
         disk_size: str = "32G",
         ram_size: str = "4G",
         cpu_cores: str = "4",
-        server_type: Literal["mcp"] = "mcp",
         shm_size: str = "4g",
     ):
+        server_type: Literal["mcp"] = "mcp"
         super().__init__(
             os_type=os_type,
             provider_type=provider_type,
@@ -36,3 +36,11 @@ class MCPRemoteServer(ScreenRemoteEnv):
             session_password=session_password,
             novnc_server=novnc_server,
         )
+
+        self.mcp_server_json = {
+            "name": "MCP Screen Remote Server",
+            "transport": {
+                "type": "streamable-http",
+                "url": self.base_url,
+            },
+        }

@@ -25,16 +25,6 @@ def recording() -> Generator[Sandbox, None, None]:
         s.close()
 
 
-# create me a function to input 2 number for mouse position
-def input_number() -> tuple[int, int]:
-    """Input 2 number for mouse position"""
-    print("Enter the first number:")
-    first_number = int(input())
-    print("Enter the second number:")
-    second_number = int(input())
-    return first_number, second_number
-
-
 def demo_complex_gui_automation() -> None:
     """
     🚀 EXPERT GUI AGENT DEMO: Multi-Application Workflow Automation

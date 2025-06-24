@@ -114,6 +114,7 @@ class ScreenRemoteEnv:
         logger.info(
             "Setting up remote environment using Docker - Initial setup may take 5-10 minutes. Please wait..."
         )
+        self.server_type = server_type
 
         # Set default environment variables
         self.environment = {

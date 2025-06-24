@@ -65,12 +65,12 @@ class Sandbox(ScreenRemoteEnv):
         disk_size: str = "32G",
         ram_size: str = "4G",
         cpu_cores: str = "4",
-        server_type: Literal["fastapi"] = "fastapi",
         shm_size: str = "4g",
         session_password: str | bool = True,
         novnc_server: bool = True,
     ):
         # Initialize the base RemoteEnv class
+        server_type: Literal["fastapi"] = "fastapi"
         super().__init__(
             os_type=os_type,
             provider_type=provider_type,
