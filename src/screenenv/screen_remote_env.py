@@ -158,21 +158,6 @@ class ScreenRemoteEnv:
         # Configure provider based on OS type
         if os_type == "Ubuntu":
             if provider_type == "docker":
-                # healthcheck_config = HealthCheckConfig(
-                #     endpoint=("/screenshot" if server_type == "fastapi" else "/mcp/"),
-                #     port=5000,
-                #     retry_interval=10,
-                #     headers=(
-                #         {"X-Session-Password": self.session_password}
-                #         if server_type == "fastapi"
-                #         else {
-                #             "Accept": "application/json, text/event-stream",
-                #             "Content-Type": "application/json",
-                #         }
-                #     ),
-                #     json_data=(None if server_type == "fastapi" else MCP_INIT_REQUEST),
-                #     method=("GET" if server_type == "fastapi" else "POST"),
-                # )
                 healthcheck_config = HealthCheckConfig(
                     endpoint="/health",
                     port=8080,
@@ -180,8 +165,7 @@ class ScreenRemoteEnv:
                 )
                 config = DockerProviderConfig(
                     ports_to_forward=ports_to_forward,
-                    # image="amhma/ubuntu-desktop:22.04-0.0.1-dev",
-                    image="huggingface/ubuntu_xfce4:latest",
+                    image="amhma/ubuntu-desktop:22.04-0.0.1-dev",
                     healthcheck_config=healthcheck_config,
                     volumes=volumes,
                     shm_size=shm_size,
