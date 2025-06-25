@@ -69,7 +69,7 @@ class Sandbox(ScreenRemoteEnv):
         ram_size: str = "4G",
         cpu_cores: str = "4",
         shm_size: str = "4g",
-        session_password: str | bool = True,
+        session_password: str | bool = False,
         novnc_server: bool = True,
     ):
         # Initialize the base RemoteEnv class

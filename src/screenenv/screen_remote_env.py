@@ -202,7 +202,7 @@ class ScreenRemoteEnv:
 
         if novnc_server:
             # Connect to the container's exposed port from the host through nginx
-            self.novnc_url = f"{self.base_url}/vnc.html?host={self.ip_addr.ip_address}&port={self.endpoint_port}&autoconnect=true"
+            self.novnc_url = f"{self.base_url}/vnc.html?host={self.ip_addr.ip_address}&port={self.ip_addr.host_port[self.endpoint_port]}&autoconnect=true"
             if self.session_password:
                 self.novnc_url += f"&password={self.session_password}"
 
