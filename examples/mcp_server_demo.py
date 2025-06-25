@@ -24,7 +24,7 @@ async def mcp_server() -> AsyncGenerator[ClientSession, None]:
         print("🎬 MCP Server started:", server.base_url)
 
         # Connect to the server
-        async with streamablehttp_client(f"{server.base_url}/mcp") as (
+        async with streamablehttp_client(server.server_url) as (
             read_stream,
             write_stream,
             _,

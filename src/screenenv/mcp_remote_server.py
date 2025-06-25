@@ -36,7 +36,6 @@ class MCPScreenRemoteServer(ScreenRemoteEnv):
             session_password=session_password,
             novnc_server=novnc_server,
         )
-
         self.mcp_server_json = {
             "name": "MCP Screen Remote Server",
             "transport": {

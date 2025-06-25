@@ -239,6 +239,54 @@ def web_automation():
         sandbox.close()
 ```
 
+## Nginx Unified Endpoint
+
+ScreenEnv now includes an nginx reverse proxy that provides a unified endpoint for all services. Instead of accessing different ports for each service, you can now access everything through a single port with organized URL paths.
+
+### Unified Endpoints
+
+- **Backend API**: `http://host:port/api/*` → `localhost:5000/*`
+- **noVNC Interface**: `http://host:port/novnc/*` → `localhost:8006/*`
+- **Browser Debugging**: `http://host:port/browser/*` → `localhost:9222/*`
+- **Health Check**: `http://host:port/health`
+
+### Usage
+
+```python
+from src.screenenv.screen_remote_env import ScreenRemoteEnv
+
+# Start environment with nginx
+env = ScreenRemoteEnv(
+    os_type="Ubuntu",
+    provider_type="docker",
+    headless=True,
+    novnc_server=True,
+    session_password="your_password",
+    server_type="fastapi"
+)
+
+# Get unified endpoint URLs
+print(f"Base URL: {env.get_base_url()}")
+print(f"API URL: {env.get_api_url()}")
+print(f"noVNC URL: {env.get_novnc_url()}")
+print(f"Browser URL: {env.get_browser_url()}")
+
+# Access services through nginx
+api_response = requests.get(f"{env.get_api_url()}/screenshot")
+vnc_url = f"{env.get_novnc_url()}/vnc.html"
+browser_debug = f"{env.get_browser_url()}/"
+```
+
+### Benefits
+
+- **Single Entry Point**: All services accessible through one port
+- **Clean URLs**: Organized by service type (`/api`, `/novnc`, `/browser`)
+- **Load Balancing Ready**: Easy to add multiple backend instances
+- **Security**: Centralized security headers and rate limiting
+- **Monitoring**: Centralized logging and health checks
+
+For detailed configuration information, see [NGINX_SETUP.md](NGINX_SETUP.md).
+
 ## System Requirements
 
 - **Docker**: Must be installed and running

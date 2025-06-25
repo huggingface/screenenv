@@ -54,6 +54,9 @@ class Sandbox(ScreenRemoteEnv):
     browser: Optional[Browser]
     chromium_context: Optional[BrowserContext]
     _playwright: Optional[Playwright]
+    server_url: str
+    chromium_url: str
+    novnc_url: Optional[str]
 
     def __init__(
         self,
@@ -114,7 +117,8 @@ class Sandbox(ScreenRemoteEnv):
         self, method: str, endpoint: str, **kwargs: Any
     ) -> requests.Response:
         """Make an HTTP request with retry logic"""
-        url = self.base_url + endpoint
+        url = self.server_url + endpoint
+        logger.info("Making request to %s", url)
 
         # Ensure headers exist in kwargs
         if "headers" not in kwargs:
@@ -150,10 +154,7 @@ class Sandbox(ScreenRemoteEnv):
 
     # Chrome setup
     def _chrome_open_tabs_setup(self, urls_to_open: list[str]) -> None:
-        host = self.ip_addr.ip_address
-        port = self.chromium_port
-
-        remote_debugging_url = f"http://{host}:{port}"
+        remote_debugging_url = self.chromium_url
         logger.info("Connect to Chrome @: %s", remote_debugging_url)
         logger.debug("PLAYWRIGHT ENV: %s", repr(os.environ))
 

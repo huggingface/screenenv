@@ -1,6 +1,5 @@
 # isort: skip_file
 
-import os
 import uuid
 import webbrowser
 from typing import Literal, Optional
@@ -72,10 +71,11 @@ class ScreenRemoteEnv:
     provider: ProviderClient
     ip_addr: IPAddr
     base_url: str
-    server_port: int
-    chromium_port: int
-    vnc_port: int | None
-    vnc_url: str | None
+    endpoint_port: int
+    server_type: Literal["fastapi", "mcp"]
+    server_url: str
+    chromium_url: str
+    novnc_url: Optional[str]
 
     def __init__(
         self,
@@ -147,42 +147,41 @@ class ScreenRemoteEnv:
             )
         self.environment["SESSION_PASSWORD"] = self.session_password
 
-        self.ssl_cert_file: Optional[str] = None
-        self.ssl_key_file: Optional[str] = None
         self.headless = headless
         self.volumes = volumes
+        self.endpoint_port: int = 8080
 
-        server_port: int = 5000
-        vnc_port: int = 8006
-        chromium_port: int = 9222
+        # ports_to_forward = {8080, 5000, 9222, 8006}
 
-        ports_to_forward = (
-            {server_port, vnc_port, chromium_port}
-            if novnc_server
-            else {server_port, chromium_port}
-        )
+        ports_to_forward: set[int] = {self.endpoint_port}
 
         # Configure provider based on OS type
         if os_type == "Ubuntu":
             if provider_type == "docker":
+                # healthcheck_config = HealthCheckConfig(
+                #     endpoint=("/screenshot" if server_type == "fastapi" else "/mcp/"),
+                #     port=5000,
+                #     retry_interval=10,
+                #     headers=(
+                #         {"X-Session-Password": self.session_password}
+                #         if server_type == "fastapi"
+                #         else {
+                #             "Accept": "application/json, text/event-stream",
+                #             "Content-Type": "application/json",
+                #         }
+                #     ),
+                #     json_data=(None if server_type == "fastapi" else MCP_INIT_REQUEST),
+                #     method=("GET" if server_type == "fastapi" else "POST"),
+                # )
                 healthcheck_config = HealthCheckConfig(
-                    endpoint=("/screenshot" if server_type == "fastapi" else "/mcp/"),
-                    port=5000,
+                    endpoint="/health",
+                    port=8080,
                     retry_interval=10,
-                    headers=(
-                        {"X-Session-Password": self.session_password}
-                        if server_type == "fastapi"
-                        else {
-                            "Accept": "application/json, text/event-stream",
-                            "Content-Type": "application/json",
-                        }
-                    ),
-                    json_data=(None if server_type == "fastapi" else MCP_INIT_REQUEST),
-                    method=("GET" if server_type == "fastapi" else "POST"),
                 )
                 config = DockerProviderConfig(
                     ports_to_forward=ports_to_forward,
-                    image="amhma/ubuntu-desktop:22.04-0.0.1-dev",
+                    # image="amhma/ubuntu-desktop:22.04-0.0.1-dev",
+                    image="huggingface/ubuntu_xfce4:latest",
                     healthcheck_config=healthcheck_config,
                     volumes=volumes,
                     shm_size=shm_size,
@@ -206,25 +205,25 @@ class ScreenRemoteEnv:
 
         # Get IP address and set up base URL
         self.ip_addr = self.provider.get_ip_address()
-        self.base_url = (
-            f"http://{self.ip_addr.ip_address}:{self.ip_addr.host_port[server_port]}"
-        )
+        self.base_url = f"http://{self.ip_addr.ip_address}:{self.ip_addr.host_port[self.endpoint_port]}"
 
-        # Store port mappings for easy access
-        self.server_port = self.ip_addr.host_port[server_port]
-        self.chromium_port = self.ip_addr.host_port[chromium_port]
-        self.vnc_port = self.ip_addr.host_port[vnc_port] if not headless else None
+        self.server_url = (
+            f"{self.base_url}/api"
+            if self.server_type == "fastapi"
+            else f"{self.base_url}/mcp/"
+        )
+        self.chromium_url = f"{self.base_url}/browser"
+        self.novnc_url = f"{self.base_url}" if not self.headless else None
+        self.vnc_port = 8006  # TODO: make this dynamic using docker env variables
 
         if novnc_server:
-            # Use HTTPS when SSL is enabled (certificate is handled by noVNC in container)
-            vnc_protocol = "http"
-            # Connect to the container's exposed port from the host
-            self.vnc_url = f"{vnc_protocol}://{self.ip_addr.ip_address}:{self.vnc_port}/vnc.html?host={self.ip_addr.ip_address}&port={self.vnc_port}&autoconnect=true"
+            # Connect to the container's exposed port from the host through nginx
+            self.novnc_url = f"{self.base_url}/vnc.html?host={self.ip_addr.ip_address}&port={self.endpoint_port}&autoconnect=true"
             if self.session_password:
-                self.vnc_url += f"&password={self.session_password}"
+                self.novnc_url += f"&password={self.session_password}"
 
             if not headless:
-                webbrowser.open(self.vnc_url)
+                webbrowser.open(self.novnc_url)
 
     def get_ip_address(self):
         """Get the IP address and port mappings of the environment"""
@@ -238,17 +237,27 @@ class ScreenRemoteEnv:
         """Get the session password for authentication"""
         return self.session_password
 
-    def get_chromium_port(self) -> int:
-        """Get the Chromium debugging port"""
-        return self.chromium_port
+    def get_api_url(self) -> str:
+        """Get the API URL through nginx"""
+        return self.server_url
 
-    def get_vnc_port(self) -> Optional[int]:
-        """Get the VNC port (None if headless)"""
-        return self.vnc_port
+    def get_novnc_url(self) -> Optional[str]:
+        """Get the noVNC URL through nginx (None if noVNC is disabled)"""
+        if not self.novnc_server:
+            return None
+        return self.novnc_url
+
+    def get_browser_url(self) -> str:
+        """Get the browser debugging URL through nginx"""
+        return self.chromium_url
 
     def get_vnc_url(self) -> Optional[str]:
         """Get the VNC URL (None if headless)"""
         return getattr(self, "vnc_url", None)
+
+    def is_novnc_enabled(self) -> bool:
+        """Check if noVNC server is enabled"""
+        return self.novnc_server
 
     def reset(self):
         """Reset the environment"""
@@ -256,29 +265,6 @@ class ScreenRemoteEnv:
 
     def close(self) -> None:
         """Close the environment and clean up resources"""
-        # Clean up SSL certificate and key if they exist
-        if (
-            hasattr(self, "ssl_cert_file")
-            and self.ssl_cert_file
-            and os.path.exists(self.ssl_cert_file)
-        ):
-            try:
-                os.unlink(self.ssl_cert_file)
-                logger.info(f"Cleaned up SSL certificate: {self.ssl_cert_file}")
-            except Exception as e:
-                logger.warning(f"Failed to clean up SSL certificate: {e}")
-
-        if (
-            hasattr(self, "ssl_key_file")
-            and self.ssl_key_file
-            and os.path.exists(self.ssl_key_file)
-        ):
-            try:
-                os.unlink(self.ssl_key_file)
-                logger.info(f"Cleaned up SSL key: {self.ssl_key_file}")
-            except Exception as e:
-                logger.warning(f"Failed to clean up SSL key: {e}")
-
         # Stop the provider
         self.provider.stop_emulator()
 
