@@ -194,3 +194,5 @@ cython_debug/
 .cursorindexingignore
 
 gui_agent_demo.mp4
+
+uv.lock
