@@ -29,12 +29,12 @@ A powerful Python library for creating and managing isolated desktop environment
    ```
 
 2. **Install the package** (choose one):
-   
+
    **Using pip:**
    ```bash
    pip install .
    ```
-   
+
    **Using uv:**
    ```bash
    uv sync
@@ -105,7 +105,7 @@ from screenenv import MCPRemoteServer
 async def mcp_automation():
     # Start MCP server
     server = MCPRemoteServer(headless=False)
-    
+
     try:
         # Connect to MCP server
         async with streamablehttp_client(server.server_url) as (
@@ -113,23 +113,23 @@ async def mcp_automation():
         ):
             async with ClientSession(read_stream, write_stream) as session:
                 await session.initialize()
-                
+
                 # Launch terminal
                 await session.call_tool("launch", {
                     "application": "xfce4-terminal",
                     "wait_for_window": True
                 })
-                
+
                 # Type commands
                 await session.call_tool("write", {"text": "echo 'Hello MCP!'"})
                 await session.call_tool("press", {"key": ["Enter"]})
-                
+
                 # Take screenshot
                 tool_response = await session.call_tool("screenshot", {})
                 ...
-                
+
                 print("MCP automation completed!")
-                
+
     finally:
         server.close()
 
@@ -268,7 +268,7 @@ windows = sandbox.get_application_windows("xfce4-terminal")
 window_id = windows[0]
 sandbox.activate_window(window_id)
 
-window_id = sandbox.get_current_window_id() # get the current activate window id. 
+window_id = sandbox.get_current_window_id() # get the current activate window id.
 sandbox.window_size(window_id)
 sandbox.get_window_title(window_id)
 sandbox.close_window(window_id)
