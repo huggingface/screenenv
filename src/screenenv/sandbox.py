@@ -665,10 +665,6 @@ class Sandbox(RemoteScreenEnv):
         # Call parent close method to clean up Docker environment
         super().close()
 
-    def kill(self) -> None:
-        """Kill the environment"""
-        self.close()
-
 
 if __name__ == "__main__":
     client = Sandbox()

@@ -15,6 +15,8 @@ A powerful Python library for creating and managing isolated desktop environment
 - 📁 **File Operations**: Upload, download, and file management
 - 🐚 **Terminal Access**: Execute commands and capture output
 - 🔒 **Secure**: Isolated environment with session-based authentication
+- 🤖 **MCP Server Support**: Model Context Protocol integration for AI/LLM automation
+- 🐳 **Docker Ready**: Pre-built Docker image with all dependencies
 
 ## Quick Start
 
@@ -26,22 +28,18 @@ A powerful Python library for creating and managing isolated desktop environment
    cd screenenv
    ```
 
-2. **Install dependencies**:
+2. **Install the package** (choose one):
+   
+   **Using pip:**
    ```bash
-   pip install -r requirements.txt
+   pip install .
+   ```
+   
+   **Using uv:**
+   ```bash
+   uv sync
    ```
 
-3. **Install Playwright browsers** (required for web automation):
-   ```bash
-   playwright install
-   ```
-
-4. **Install the package**:
-   ```bash
-   pip install -e .
-   ```
-
-> For usage, see the source code in `examples/sandbox_demo.py`
 
 ### Basic Usage
 
@@ -67,6 +65,135 @@ try:
 finally:
     # Clean up
     sandbox.close()
+```
+
+> For usage, see the source code in `examples/sandbox_demo.py`
+
+## MCP Server Support
+
+ScreenEnv includes full support for the Model Context Protocol (MCP), enabling seamless integration with AI/LLM systems for desktop automation.
+
+### What is MCP?
+
+The Model Context Protocol (MCP) is a standard for AI assistants to interact with external tools and data sources. ScreenEnv's MCP server provides desktop automation capabilities that can be used by any MCP-compatible AI system.
+
+### MCP Server Features
+
+- **30+ Automation Tools**: Complete desktop control via MCP
+- **Streamable HTTP Transport**: Efficient communication protocol
+
+### Starting the MCP Server
+
+```python
+from screenenv import MCPRemoteServer
+
+# Start MCP server
+server = MCPRemoteServer()
+
+print(f"MCP Server URL: {server.server_url}")
+print(f"Server Configuration: {server.mcp_server_json}")
+```
+
+### MCP Client Usage
+
+```python
+import asyncio
+from mcp import ClientSession
+from mcp.client.streamable_http import streamablehttp_client
+from screenenv import MCPRemoteServer
+
+async def mcp_automation():
+    # Start MCP server
+    server = MCPRemoteServer(headless=False)
+    
+    try:
+        # Connect to MCP server
+        async with streamablehttp_client(server.server_url) as (
+            read_stream, write_stream, _
+        ):
+            async with ClientSession(read_stream, write_stream) as session:
+                await session.initialize()
+                
+                # Launch terminal
+                await session.call_tool("launch", {
+                    "application": "xfce4-terminal",
+                    "wait_for_window": True
+                })
+                
+                # Type commands
+                await session.call_tool("write", {"text": "echo 'Hello MCP!'"})
+                await session.call_tool("press", {"key": ["Enter"]})
+                
+                # Take screenshot
+                tool_response = await session.call_tool("screenshot", {})
+                ...
+                
+                print("MCP automation completed!")
+                
+    finally:
+        server.close()
+
+# Run the automation
+asyncio.run(mcp_automation())
+```
+
+### Available MCP Tools
+
+#### System Operations
+- `execute_command` - Execute shell commands
+- `get_platform` - Get system platform information
+- `get_screen_size` - Get screen dimensions
+- `get_desktop_path` - Get desktop directory path
+- `get_directory_tree` - List directory contents
+- `get_file` - Get file contents
+- `download_file` - Download file from URL
+- `start_recording` - Start screen recording
+- `end_recording` - End screen recording
+
+#### Application Management
+- `wait` - Wait for specified milliseconds
+- `open` - Open file or URL
+- `launch` - Launch application
+- `get_current_window_id` - Get current window ID
+- `get_application_windows` - Get windows for application
+- `get_window_name` - Get window name/title
+- `get_window_size` - Get window size
+- `activate_window` - Activate window
+- `close_window` - Close window
+- `get_terminal_output` - Get terminal output
+
+#### GUI Automation
+- `screenshot` - Take screenshot
+- `left_click` - Left click at coordinates
+- `double_click` - Double click at coordinates
+- `right_click` - Right click at coordinates
+- `middle_click` - Middle click at coordinates
+- `scroll` - Scroll mouse wheel
+- `move_mouse` - Move mouse to coordinates
+- `mouse_press` - Press mouse button
+- `mouse_release` - Release mouse button
+- `get_cursor_position` - Get cursor position
+- `write` - Type text
+- `press` - Press keys
+- `drag` - Drag mouse from one position to another
+
+### MCP Server Configuration
+
+```python
+# Advanced MCP server configuration
+server = MCPRemoteServer(
+    os_type="Ubuntu",
+    provider_type="docker",
+    headless=True,
+    resolution=(1920, 1080),
+    disk_size="32G",
+    ram_size="4G",
+    cpu_cores="4",
+    session_password="your_password",
+    stream_server=True,
+    dpi=96,
+    timeout=1000
+)
 ```
 
 ## Sandbox Instantiation
@@ -107,7 +234,12 @@ sandbox.move_mouse(x=800, y=900)
 sandbox.drag(fr=(100, 100), to=(200, 200))
 
 # Scrolling
-sandbox.scroll(x=500, y=500, direction="down", amount=3)
+sandbox.scroll(direction="down", amount=3)
+
+sandbox.mouse_release(button="left")
+
+sandbox.mouse_press(button="left")
+sandbox.mouse_release(button="left")
 ```
 
 ### Keyboard Input
@@ -135,6 +267,10 @@ sandbox.open("https://www.google.com")
 windows = sandbox.get_application_windows("xfce4-terminal")
 window_id = windows[0]
 sandbox.activate_window(window_id)
+
+window_id = sandbox.get_current_window_id() # get the current activate window id. 
+sandbox.window_size(window_id)
+sandbox.get_window_title(window_id)
 sandbox.close_window(window_id)
 ```
 
@@ -159,9 +295,8 @@ sandbox.start_recording()
 
 # Take screenshots
 desktop_screenshot = sandbox.desktop_screenshot()
-browser_screenshot = sandbox.playwright_screenshot()
 
-# Stop recording and save
+# Stop recording and save it locally to a file 'demo.mp4'
 sandbox.end_recording("demo.mp4")
 ```
 
@@ -238,62 +373,38 @@ def web_automation():
     finally:
         sandbox.close()
 ```
-
-## Nginx Unified Endpoint
-
-ScreenEnv now includes an nginx reverse proxy that provides a unified endpoint for all services. Instead of accessing different ports for each service, you can now access everything through a single port with organized URL paths.
-
-### Unified Endpoints
-
-- **Backend API**: `http://host:port/api/*` → `localhost:5000/*`
-- **noVNC Interface**: `http://host:port/novnc/*` → `localhost:8006/*`
-- **Browser Debugging**: `http://host:port/browser/*` → `localhost:9222/*`
-- **Health Check**: `http://host:port/health`
-
-### Usage
-
-```python
-from src.screenenv.screen_remote_env import RemoteScreenEnv
-
-# Start environment with nginx
-env = RemoteScreenEnv(
-    os_type="Ubuntu",
-    provider_type="docker",
-    headless=True,
-    novnc_server=True,
-    session_password="your_password",
-    server_type="fastapi"
-)
-
-# Get unified endpoint URLs
-print(f"Base URL: {env.get_base_url()}")
-print(f"API URL: {env.get_api_url()}")
-print(f"noVNC URL: {env.get_novnc_url()}")
-print(f"Browser URL: {env.get_browser_url()}")
-
-# Access services through nginx
-api_response = requests.get(f"{env.get_api_url()}/screenshot")
-vnc_url = f"{env.get_novnc_url()}/vnc.html"
-browser_debug = f"{env.get_browser_url()}/"
-```
-
 ### Benefits
 
 - **Single Entry Point**: All services accessible through one port
-- **Clean URLs**: Organized by service type (`/api`, `/novnc`, `/browser`)
+- **Clean URLs**: Organized by service type (`/api`, `/novnc`, `/browser`, `/mcp`)
 - **Load Balancing Ready**: Easy to add multiple backend instances
-- **Security**: Centralized security headers and rate limiting
-- **Monitoring**: Centralized logging and health checks
 
-For detailed configuration information, see [NGINX_SETUP.md](NGINX_SETUP.md).
+## MCP Server Demo
+
+```bash
+python -m examples.mcp_server_demo # or sudo -E python -m examples.mcp_server_demo if not in docker group
+```
+
+## Sandbox Demo
+
+```bash
+python -m examples.sandbox_demo # or sudo -E python -m examples.sandbox_demo if not in docker group
+```
+
+## Computer Agent Demo
+
+```bash
+cd examples/computer_agent
+python app.py # or sudo -E python app.py if not in docker group
+```
+
 
 ## System Requirements
 
 - **Docker**: Must be installed and running
-- **Python**: 3.8 or higher
+- **Python**: 3.10 or higher
 - **Playwright**: For web automation features
 - **Memory**: At least 4GB RAM recommended
-- **Storage**: At least 10GB free space
 
 ## Docker Image
 
@@ -303,7 +414,8 @@ The sandbox uses a custom Ubuntu 22.04 Docker image with:
 - Google Chrome/Chromium browser
 - LibreOffice suite
 - Python development tools
-- Various system utilities
+- MCP server support
+- Nginx reverse proxy
 
 ## Troubleshooting
 
@@ -313,8 +425,19 @@ The sandbox uses a custom Ubuntu 22.04 Docker image with:
    ```bash
    # Start Docker service
    sudo systemctl start docker
-   sudo python3 -m examples.sandbox_demo
+   sudo -E python3 -m examples.sandbox_demo
    ```
 
-2. **VNC connection issues**:
-   - Try disabling SSL with `auto_ssl=False`
+4. **Docker image not found**:
+   ```bash
+   # Build the image locally
+   cd dockerfiles/desktop
+   docker build -f Dockerfile.ubuntu_xfce4 -t amhma/ubuntu-desktop:22.04-0.0.1-dev .
+   ```
+
+### Getting Help
+
+- Check the [examples](examples/) directory for working code samples
+- Review the [MCP server documentation](dockerfiles/desktop/README_SERVER.md)
+- Ensure all dependencies are installed: `pip install -r requirements.txt`
+- For Docker issues, verify Docker is running and has sufficient resources

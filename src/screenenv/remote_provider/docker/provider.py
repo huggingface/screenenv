@@ -37,7 +37,7 @@ class HealthCheckConfig(BaseModel):
 class DockerProviderConfig(BaseModel):
     PROVIDER_NAME: Literal["docker"] = "docker"
     ports_to_forward: set[int]
-    endpoint_port: int | None = None
+    endpoint_port: int = 8080
     healthcheck_config: HealthCheckConfig = HealthCheckConfig()
     environment: dict[str, str] = {
         "DISK_SIZE": "32G",
@@ -183,8 +183,7 @@ class DockerProvider(Provider):
                 # Add external port to environment for nginx configuration
                 environment = self.config.environment.copy()
                 # Add all external ports as environment variables
-                if self.config.endpoint_port:
-                    environment["ENDPOINT_PORT"] = str(self.config.endpoint_port)
+                environment["ENDPOINT_PORT"] = str(self.config.endpoint_port)
 
                 # Start container while still holding the lock
                 logger.info(
