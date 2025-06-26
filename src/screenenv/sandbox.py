@@ -15,7 +15,7 @@ from playwright.sync_api import (
 )
 from urllib.parse import urlparse
 
-from screenenv.screen_remote_env import ScreenRemoteEnv, ScreenSize
+from screenenv.remote_screen_env import RemoteScreenEnv, StandardScreenSize
 from screenenv.logger import get_logger
 from screenenv.retry_decorator import retry
 from screenenv.request_models import (
@@ -45,7 +45,7 @@ logger = get_logger(__name__)
 Params = dict[str, int | str]
 
 
-class Sandbox(ScreenRemoteEnv):
+class Sandbox(RemoteScreenEnv):
     """Client for interacting with the Android environment server"""
 
     retry_times: int
@@ -61,16 +61,19 @@ class Sandbox(ScreenRemoteEnv):
     def __init__(
         self,
         os_type: Literal["Ubuntu", "Windows", "MacOS"] = "Ubuntu",
-        provider_type: Literal["docker", "aws", "hf_inference_endpoint"] = "docker",
+        provider_type: Literal["docker", "aws", "hf"] = "docker",
         volumes: list[str] = [],
         headless: bool = True,
-        screen_size: ScreenSize = "1920x1080",
+        resolution: StandardScreenSize | tuple[int, int] = (1920, 1080),
         disk_size: str = "32G",
         ram_size: str = "4G",
         cpu_cores: str = "4",
         shm_size: str = "4g",
         session_password: str | bool = False,
-        novnc_server: bool = True,
+        stream_server: bool = True,
+        dpi: int = 96,
+        api_key: str | None = None,
+        timeout: int = 1000,
     ):
         # Initialize the base RemoteEnv class
         server_type: Literal["fastapi"] = "fastapi"
@@ -79,14 +82,16 @@ class Sandbox(ScreenRemoteEnv):
             provider_type=provider_type,
             volumes=volumes,
             headless=headless,
-            screen_size=screen_size,
+            resolution=resolution,
             disk_size=disk_size,
             ram_size=ram_size,
             cpu_cores=cpu_cores,
             server_type=server_type,
             shm_size=shm_size,
             session_password=session_password,
-            novnc_server=novnc_server,
+            stream_server=stream_server,
+            dpi=dpi,
+            api_key=api_key,
         )
 
         # Initialize Sandbox-specific attributes
@@ -215,15 +220,16 @@ class Sandbox(ScreenRemoteEnv):
 
             break
 
-    def health(self) -> bool:
-        """Check the health of the environment"""
-        try:
-            response = self._make_request("GET", "/screenshot")
-            response.raise_for_status()
-        except Exception as e:
-            print(f"Environment is not healthy: {e}")
-            return False
-        return True
+    @property
+    def sandbox_id(self) -> str:
+        """Get the sandbox ID"""
+        provider_id = self.get_provider_id()
+        if provider_id is None:
+            logger.warning(
+                "Sandbox ID is not available. Please wait for the sandbox to start."
+            )
+            return ""
+        return provider_id
 
     def _wait_and_verify(
         self,
@@ -535,7 +541,7 @@ class Sandbox(ScreenRemoteEnv):
     # Keyboard and mouse actions space
     # ================================
 
-    def screenshot(self) -> bytes | None:
+    def screenshot(self) -> bytes:
         """
         Gets a screenshot from the server. With the cursor. None -> no screenshot or unexpected error.
         """
@@ -565,16 +571,14 @@ class Sandbox(ScreenRemoteEnv):
         """
         self._make_request("POST", "/double_click", params={"x": x, "y": y})
 
-    def scroll(
-        self, x: int, y: int, direction: Literal["up", "down"] = "down", amount: int = 1
-    ):
+    def scroll(self, direction: Literal["up", "down"] = "down", amount: int = 1):
         """
         Scrolls the mouse wheel in the specified direction.
         """
         self._make_request(
             "POST",
             "/scroll",
-            params={"x": x, "y": y, "direction": direction, "amount": amount},
+            params={"direction": direction, "amount": amount},
         )
 
     def move_mouse(self, x: int, y: int):

@@ -6,7 +6,7 @@ from typing import AsyncGenerator
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 
-from screenenv import MCPScreenRemoteServer
+from screenenv import MCPRemoteServer
 
 
 def sleep(seconds: float = 1.0) -> None:
@@ -20,7 +20,7 @@ async def mcp_server() -> AsyncGenerator[ClientSession, None]:
     server = None
     try:
         # Start the MCP server
-        server = MCPScreenRemoteServer(headless=False)
+        server = MCPRemoteServer(headless=False)
         print("🎬 MCP Server started:", server.base_url)
 
         # Connect to the server

@@ -1,13 +1,13 @@
 from .logger import get_logger
-from .mcp_remote_server import MCPScreenRemoteServer
+from .mcp_remote_server import MCPRemoteServer
+from .remote_screen_env import RemoteScreenEnv, StandardScreenSize
 from .sandbox import Sandbox
-from .screen_remote_env import ScreenRemoteEnv, ScreenSize
 
 __all__ = [
     "Sandbox",
-    "ScreenRemoteEnv",
+    "RemoteScreenEnv",
     "get_logger",
     "logger",
-    "ScreenSize",
-    "MCPScreenRemoteServer",
+    "StandardScreenSize",
+    "MCPRemoteServer",
 ]

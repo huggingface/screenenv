@@ -37,6 +37,7 @@ class HealthCheckConfig(BaseModel):
 class DockerProviderConfig(BaseModel):
     PROVIDER_NAME: Literal["docker"] = "docker"
     ports_to_forward: set[int]
+    endpoint_port: int | None = None
     healthcheck_config: HealthCheckConfig = HealthCheckConfig()
     environment: dict[str, str] = {
         "DISK_SIZE": "32G",
@@ -58,6 +59,7 @@ class DockerProviderConfig(BaseModel):
     )
     user: str | None = None  # set to the user to run the container as
     shm_size: str | None = None  # set to the size of the shared memory to use
+    timeout: int = 1000  # timeout for the health check in seconds
 
 
 class DockerProvider(Provider):
@@ -73,6 +75,12 @@ class DockerProvider(Provider):
             raise ValueError("Ports to forward must be provided")
         self.ports = {port: port for port in self.config.ports_to_forward}
         return self
+
+    @property
+    def id(self) -> str | None:
+        if self.container is None:
+            return None
+        return self.container.id
 
     def _get_used_ports(self):
         """Get all currently used ports (both system and Docker)."""
@@ -104,9 +112,10 @@ class DockerProvider(Provider):
             f"No available ports found starting from {start_port}"
         )
 
-    def _wait_for_vm_ready(self, timeout: int = 1000):
+    def _wait_for_vm_ready(self):
         """Wait for VM to be ready by checking screenshot endpoint."""
         start_time = time.time()
+        timeout = self.config.timeout
 
         def check_health():
             if (
@@ -162,6 +171,12 @@ class DockerProvider(Provider):
                 for port in self.ports:
                     self.ports[port] = self._get_available_port(port)
 
+                # Add external port to environment for nginx configuration
+                environment = self.config.environment.copy()
+                # Add all external ports as environment variables
+                if self.config.endpoint_port:
+                    environment["ENDPOINT_PORT"] = str(self.config.endpoint_port)
+
                 # Start container while still holding the lock
                 logger.info(
                     "🔄 Starting container with settings: %s",
@@ -174,7 +189,7 @@ class DockerProvider(Provider):
                                 for word in ["password", "ssl", "cert", "key", "ssh"]
                             )
                             else v
-                            for k, v in self.config.environment.items()
+                            for k, v in environment.items()
                         },
                         "cap_add": self.config.cap_add,
                         "devices": self.config.devices,
@@ -187,7 +202,7 @@ class DockerProvider(Provider):
                 )
                 self.container = self.client.containers.run(
                     image=self.config.image,
-                    environment=self.config.environment,
+                    environment=environment,
                     cap_add=self.config.cap_add,
                     devices=self.config.devices,
                     volumes=self.config.volumes if self.config.volumes else None,

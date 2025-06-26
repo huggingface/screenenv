@@ -253,10 +253,10 @@ ScreenEnv now includes an nginx reverse proxy that provides a unified endpoint f
 ### Usage
 
 ```python
-from src.screenenv.screen_remote_env import ScreenRemoteEnv
+from src.screenenv.screen_remote_env import RemoteScreenEnv
 
 # Start environment with nginx
-env = ScreenRemoteEnv(
+env = RemoteScreenEnv(
     os_type="Ubuntu",
     provider_type="docker",
     headless=True,

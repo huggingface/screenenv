@@ -10,6 +10,14 @@ class IPAddr(BaseModel):
 
 
 class Provider(ABC, BaseModel):
+    @property
+    @abstractmethod
+    def id(self) -> str | None:
+        """
+        Method to get the provider ID.
+        """
+        ...
+
     @abstractmethod
     def start_emulator(self):
         """
@@ -61,6 +69,10 @@ class FakeProviderConfig(BaseModel):
 
 
 class FakeProvider(Provider):
+    @property
+    def id(self) -> str | None:
+        return None
+
     def start_emulator(self):
         pass
 

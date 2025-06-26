@@ -70,9 +70,11 @@ def demo_complex_gui_automation() -> None:
         ]
 
         for cmd in system_commands:
-            s.write(cmd)
+            s.write(cmd, delay_in_ms=10)
             s.press("Enter")
             sleep(0.5)
+
+        sleep(0.5)
 
         # Get terminal window and activate it
         terminal_windows = s.get_application_windows("xfce4-terminal")
@@ -105,7 +107,7 @@ def demo_complex_gui_automation() -> None:
         sleep(1)
 
         for i in range(5):
-            s.scroll(300, 300, direction="down", amount=10)
+            s.scroll(direction="down", amount=10)
 
         print("Launching xfce4-terminal for system analysis...")
         s.launch("xfce4-terminal", wait_for_window=True)
@@ -135,12 +137,6 @@ def demo_complex_gui_automation() -> None:
         # Launch LibreOffice Writer
         print("Launching LibreOffice Writer...")
         s.launch("libreoffice --writer", wait_for_window=True)
-        sleep(1)
-
-        # Get Writer window and activate it
-        writer_windows = s.get_application_windows("libreoffice")
-        writer_id = writer_windows[0]
-        s.activate_window(writer_id)
         sleep(1)
         s.press("Enter")
 
@@ -177,7 +173,7 @@ def demo_complex_gui_automation() -> None:
         sleep(1)
         # Type the report content
         for line in report_content:
-            s.write(line, delay_in_ms=10)
+            s.write(line, delay_in_ms=1)
             s.press("Enter")
 
         # Format the document (select all and apply formatting)
@@ -270,7 +266,7 @@ def demo_complex_gui_automation() -> None:
         s.press("Ctrl+L")
 
         for cmd in workspace_commands:
-            s.write(cmd)
+            s.write(cmd, delay_in_ms=10)
             s.press("Enter")
             sleep(0.5)
 
@@ -312,13 +308,15 @@ def demo_complex_gui_automation() -> None:
         # Final cleanup message
         s.activate_window(terminal_id)
         sleep(1)
-        s.write("echo '=== AI AGENT DEMO COMPLETED SUCCESSFULLY ==='")
+        s.write("echo '=== AI AGENT DEMO COMPLETED SUCCESSFULLY ==='", delay_in_ms=10)
         s.press("Enter")
-        s.write("echo 'All tasks completed with visible GUI automation'")
+        s.write(
+            "echo 'All tasks completed with visible GUI automation'", delay_in_ms=10
+        )
         s.press("Enter")
-        s.write("echo 'Workspace organized at ~/ai_agent_workspace'")
+        s.write("echo 'Workspace organized at ~/ai_agent_workspace'", delay_in_ms=10)
         s.press("Enter")
-        s.write("echo 'Demo recording saved as gui_agent_demo.mp4'")
+        s.write("echo 'Demo recording saved as gui_agent_demo.mp4'", delay_in_ms=10)
         s.press("Enter")
 
         print("\n🎉 DEMO COMPLETED!")

@@ -2,7 +2,9 @@
 
 import uuid
 import webbrowser
-from typing import Literal, Optional
+from typing import Literal, Optional, Union
+
+from pydantic import BaseModel
 
 
 from .remote_provider import (
@@ -17,50 +19,47 @@ from screenenv.logger import get_logger
 
 logger = get_logger(__name__)
 
-MCP_INIT_REQUEST = {
-    "jsonrpc": "2.0",
-    "method": "initialize",
-    "params": {
-        "clientInfo": {"name": "test-client", "version": "1.0"},
-        "protocolVersion": "2025-03-26",
-        "capabilities": {},
-    },
-    "id": "init-1",
-}
-
 # Screen size options for desktop environments
-ScreenSize = Literal[
+StandardScreenSize = Union[
     # Standard Desktop Resolutions
-    "1920x1080",  # Full HD (current default)
-    "1366x768",  # HD (laptop standard)
-    "2560x1440",  # 2K/QHD
-    "3840x2160",  # 4K/UHD
-    "1280x720",  # HD Ready
-    "1600x900",  # HD+
-    "1920x1200",  # WUXGA
-    "2560x1600",  # WQXGA
-    "3440x1440",  # Ultrawide QHD
-    "5120x1440",  # Super Ultrawide
+    tuple[Literal[1920], Literal[1080]],  # Full HD (current default)
+    tuple[Literal[1366], Literal[768]],  # HD (laptop standard)
+    tuple[Literal[2560], Literal[1440]],  # 2K/QHD
+    tuple[Literal[3840], Literal[2160]],  # 4K/UHD
+    tuple[Literal[1280], Literal[720]],  # HD Ready
+    tuple[Literal[1600], Literal[900]],  # HD+
+    tuple[Literal[1920], Literal[1200]],  # WUXGA
+    tuple[Literal[2560], Literal[1600]],  # WQXGA
+    tuple[Literal[3440], Literal[1440]],  # Ultrawide QHD
+    tuple[Literal[5120], Literal[1440]],  # Super Ultrawide
     # Mobile/Tablet Resolutions
-    "1024x768",  # iPad (portrait)
-    "768x1024",  # iPad (landscape)
-    "360x640",  # Mobile portrait
-    "640x360",  # Mobile landscape
+    tuple[Literal[1024], Literal[768]],  # iPad (portrait)
+    tuple[Literal[768], Literal[1024]],  # iPad (landscape)
+    tuple[Literal[360], Literal[640]],  # Mobile portrait
+    tuple[Literal[640], Literal[360]],  # Mobile landscape
     # Legacy Resolutions
-    "1024x600",  # Netbook
-    "800x600",  # SVGA
-    "640x480",  # VGA
+    tuple[Literal[1024], Literal[600]],  # Netbook
+    tuple[Literal[800], Literal[600]],  # SVGA
+    tuple[Literal[640], Literal[480]],  # VGA
     # Additional Common Resolutions
-    "1440x900",  # Custom laptop
-    "1680x1050",  # WSXGA+
-    "1920x1440",  # Custom 4:3 ratio
-    "2560x1080",  # Ultrawide Full HD
-    "3440x1440",  # Ultrawide QHD
-    "3840x1080",  # Super Ultrawide Full HD
+    tuple[Literal[1440], Literal[900]],  # Custom laptop
+    tuple[Literal[1680], Literal[1050]],  # WSXGA+
+    tuple[Literal[1920], Literal[1440]],  # Custom 4:3 ratio
+    tuple[Literal[2560], Literal[1080]],  # Ultrawide Full HD
+    tuple[Literal[3440], Literal[1440]],  # Ultrawide QHD
+    tuple[Literal[3840], Literal[1080]],  # Super Ultrawide Full HD
 ]
 
 
-class ScreenRemoteEnv:
+class StreamConfig(BaseModel):
+    base_url: str
+    ip_addr: IPAddr
+    endpoint_port: int = 8080
+    session_password: str | None = None
+    headless: bool = True
+
+
+class RemoteScreenEnv:
     """Base class for managing Docker remote environments and services"""
 
     session_password: str  # if True, a random password is generated
@@ -77,20 +76,67 @@ class ScreenRemoteEnv:
     chromium_url: str
     novnc_url: Optional[str]
 
+    class StreamServer:
+        def __init__(
+            self,
+            config: StreamConfig | None = None,
+        ):
+            if config is None:
+                self.stream_url = None
+                self.session_password = None
+
+            else:
+                # Connect to the container's exposed port from the host through nginx
+                self.stream_url = f"{config.base_url}/vnc.html?host={config.ip_addr.ip_address}&port={config.ip_addr.host_port[config.endpoint_port]}&autoconnect=true"
+                self.session_password = config.session_password
+                if config.session_password:
+                    self.stream_url += f"&password={config.session_password}"
+
+                if not config.headless:
+                    webbrowser.open(self.stream_url)
+
+        def get_auth_key(self) -> str | None:
+            """Get the authentication key for the stream"""
+            if self.stream_url is None:
+                logger.warning(
+                    "Stream server is disabled. Enable it by passing stream_server=True to Sandbox(...) or MCPScreenRemoteServer(...)."
+                )
+                return None
+            if self.session_password is None or not self.session_password:
+                logger.warning(
+                    "Session password is not set. You can directly use the stream URL to connect to the stream server."
+                )
+                return None
+            return self.session_password
+
+        def get_url(self, auth_key: str | None = None) -> str | None:
+            """Get the stream URL"""
+            if self.stream_url is None:
+                logger.warning(
+                    "Stream server is disabled. Enable it by passing stream_server=True to Sandbox(...) or MCPScreenRemoteServer(...)."
+                )
+                return None
+            if auth_key is None or not auth_key:
+                return self.stream_url
+            return f"{self.stream_url}&password={auth_key}"
+
     def __init__(
         self,
         os_type: Literal["Ubuntu", "Windows", "MacOS"] = "Ubuntu",
-        provider_type: Literal["docker", "aws", "hf_inference_endpoint"] = "docker",
+        provider_type: Literal["docker", "aws", "hf"] = "docker",
         volumes: list[str] = [],
         headless: bool = True,
-        novnc_server: bool = True,
+        stream_server: bool = True,
         session_password: str | bool = True,
-        screen_size: ScreenSize = "1920x1080",
+        resolution: StandardScreenSize | tuple[int, int] = (1920, 1080),
         disk_size: str = "32G",
         ram_size: str = "4G",
         cpu_cores: str = "4",
         server_type: Literal["fastapi", "mcp"] = "fastapi",
-        shm_size: str = "4g",
+        shm_size: str = "4g",  # shared memory size
+        dpi: int = 96,  # vnc dpi
+        api_key: str | None = None,
+        timeout: int = 1000,
     ):
         """
         Initialize the remote environment with Docker configuration.
@@ -121,11 +167,12 @@ class ScreenRemoteEnv:
             "DISK_SIZE": disk_size,
             "RAM_SIZE": ram_size,
             "CPU_CORES": cpu_cores,
-            "SCREEN_SIZE": f"{screen_size}x24",
+            "SCREEN_SIZE": f"{resolution[0]}x{resolution[1]}x24",
             "SERVER_TYPE": server_type,
+            "DPI": str(dpi),
         }
 
-        if not novnc_server:
+        if not stream_server:
             self.environment["NOVNC_SERVER_ENABLED"] = "false"
             if not headless:
                 logger.warning(
@@ -158,6 +205,10 @@ class ScreenRemoteEnv:
         # Configure provider based on OS type
         if os_type == "Ubuntu":
             if provider_type == "docker":
+                if api_key is not None:
+                    logger.warning(
+                        "API key provided, but ignored for the Docker provider."
+                    )
                 healthcheck_config = HealthCheckConfig(
                     endpoint="/health",
                     port=8080,
@@ -171,6 +222,8 @@ class ScreenRemoteEnv:
                     volumes=volumes,
                     shm_size=shm_size,
                     environment=self.environment,
+                    timeout=timeout,
+                    endpoint_port=self.endpoint_port,
                 )
             else:
                 raise NotImplementedError(
@@ -198,17 +251,20 @@ class ScreenRemoteEnv:
             else f"{self.base_url}/mcp/"
         )
         self.chromium_url = f"{self.base_url}/browser"
-        self.novnc_url = f"{self.base_url}" if not self.headless else None
-        self.vnc_port = 8006  # TODO: make this dynamic using docker env variables
 
-        if novnc_server:
-            # Connect to the container's exposed port from the host through nginx
-            self.novnc_url = f"{self.base_url}/vnc.html?host={self.ip_addr.ip_address}&port={self.ip_addr.host_port[self.endpoint_port]}&autoconnect=true&show_dot=true&view_only=false"
-            if self.session_password:
-                self.novnc_url += f"&password={self.session_password}"
-
-            if not headless:
-                webbrowser.open(self.novnc_url)
+        self.stream = RemoteScreenEnv.StreamServer(
+            config=(
+                StreamConfig(
+                    base_url=self.base_url,
+                    ip_addr=self.ip_addr,
+                    endpoint_port=self.endpoint_port,
+                    session_password=self.session_password,
+                    headless=headless,
+                )
+                if stream_server
+                else None
+            )
+        )
 
     def get_ip_address(self):
         """Get the IP address and port mappings of the environment"""
@@ -236,13 +292,9 @@ class ScreenRemoteEnv:
         """Get the browser debugging URL through nginx"""
         return self.chromium_url
 
-    def get_vnc_url(self) -> Optional[str]:
-        """Get the VNC URL (None if headless)"""
-        return getattr(self, "vnc_url", None)
-
-    def is_novnc_enabled(self) -> bool:
-        """Check if noVNC server is enabled"""
-        return self.novnc_server
+    def get_provider_id(self) -> str | None:
+        """Get the provider ID"""
+        return self.provider.id
 
     def reset(self):
         """Reset the environment"""
