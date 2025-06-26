@@ -167,6 +167,15 @@ class DockerProvider(Provider):
 
         try:
             with lock:
+                # Check if image exists
+                try:
+                    self.client.images.get(self.config.image)
+                except Exception:
+                    logger.info(
+                        f"Image {self.config.image} not found. Pulling image... (This may take a few minutes)"
+                    )
+                    self.client.images.pull(self.config.image)
+
                 # Allocate all required ports
                 for port in self.ports:
                     self.ports[port] = self._get_available_port(port)
@@ -200,6 +209,7 @@ class DockerProvider(Provider):
                         "user": self.config.user,
                     },
                 )
+
                 self.container = self.client.containers.run(
                     image=self.config.image,
                     environment=environment,
