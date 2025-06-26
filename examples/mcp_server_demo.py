@@ -173,16 +173,8 @@ async def demo_complex_gui_automation() -> None:
             "launch", {"application": "libreoffice --writer", "wait_for_window": True}
         )
         sleep(1)
-
-        # Get Writer window and activate it
-        writer_windows = await session.call_tool(
-            "get_application_windows", {"application": "libreoffice"}
-        )
-        writer_id = writer_windows.content[0].text  # type: ignore
-        if writer_id:
-            await session.call_tool("activate_window", {"window_id": writer_id})
+        await session.call_tool("press", {"key": ["Ctrl", "W"]})
         sleep(1)
-        await session.call_tool("press", {"key": ["Enter"]})
 
         # Create a professional report
         report_content = [
