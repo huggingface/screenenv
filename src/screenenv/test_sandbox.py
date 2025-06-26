@@ -216,7 +216,7 @@ def test_sandbox_misc_functions() -> None:
         sleep()
 
         print("Testing scroll...")
-        s.scroll(200, 200, direction="down", amount=2)
+        s.scroll(direction="down", amount=2)
         print("Scrolled down at (100, 100)")
         sleep()
 
