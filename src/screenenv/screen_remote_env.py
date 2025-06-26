@@ -165,7 +165,8 @@ class ScreenRemoteEnv:
                 )
                 config = DockerProviderConfig(
                     ports_to_forward=ports_to_forward,
-                    image="amhma/ubuntu-desktop:22.04-0.0.1-dev",
+                    # image="amhma/ubuntu-desktop:22.04-0.0.1-dev",
+                    image="huggingface/ubuntu_xfce4:latest",
                     healthcheck_config=healthcheck_config,
                     volumes=volumes,
                     shm_size=shm_size,
@@ -202,7 +203,7 @@ class ScreenRemoteEnv:
 
         if novnc_server:
             # Connect to the container's exposed port from the host through nginx
-            self.novnc_url = f"{self.base_url}/vnc.html?host={self.ip_addr.ip_address}&port={self.ip_addr.host_port[self.endpoint_port]}&autoconnect=true"
+            self.novnc_url = f"{self.base_url}/vnc.html?host={self.ip_addr.ip_address}&port={self.ip_addr.host_port[self.endpoint_port]}&autoconnect=true&show_dot=true&view_only=false"
             if self.session_password:
                 self.novnc_url += f"&password={self.session_password}"
 
