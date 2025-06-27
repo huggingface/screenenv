@@ -183,7 +183,9 @@ class DockerProvider(Provider):
                 # Add external port to environment for nginx configuration
                 environment = self.config.environment.copy()
                 # Add all external ports as environment variables
-                environment["ENDPOINT_PORT"] = str(self.config.endpoint_port)
+                environment["ENDPOINT_PORT"] = str(
+                    self.ports[self.config.endpoint_port]
+                )
 
                 # Start container while still holding the lock
                 logger.info(

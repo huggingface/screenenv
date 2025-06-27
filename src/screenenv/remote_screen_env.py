@@ -249,7 +249,7 @@ class RemoteScreenEnv:
             if self.server_type == "fastapi"
             else f"{self.base_url}/mcp/"
         )
-        self.chromium_url = f"{self.base_url}/browser"
+        self.chromium_url = f"{self.base_url}/browser/"
 
         self.stream = RemoteScreenEnv.StreamServer(
             config=(
