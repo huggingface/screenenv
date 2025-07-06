@@ -1,19 +1,16 @@
 {
-  "editor.formatOnSave": true,
-  "editor.codeActionsOnSave": {
-      "source.organizeImports": "always",
-      "source.fixAll.ruff": "always"
-  },
-  "isort.args": [
-      "--profile",
-      "black"
-  ],
-  "[python]": {
-      "editor.formatOnSave": true,
-      "editor.defaultFormatter": "charliermarsh.ruff"
-  },
-  "python.analysis.typeCheckingMode": "basic",
-  "python.analysis.extraPaths": [
-      "${workspaceFolder}/screensuite/src/screensuite/agents/osworld"
-  ]
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "always",
+        "source.fixAll.ruff": "always"
+    },
+    "isort.args": [
+        "--profile",
+        "black"
+    ],
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "charliermarsh.ruff"
+    },
+    "python.analysis.typeCheckingMode": "basic",
 }
