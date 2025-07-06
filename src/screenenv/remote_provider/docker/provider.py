@@ -180,13 +180,6 @@ class DockerProvider(Provider):
                 for port in self.ports:
                     self.ports[port] = self._get_available_port(port)
 
-                # Add external port to environment for nginx configuration
-                environment = self.config.environment.copy()
-                # Add all external ports as environment variables
-                environment["ENDPOINT_PORT"] = str(
-                    self.ports[self.config.endpoint_port]
-                )
-
                 # Start container while still holding the lock
                 logger.info(
                     "🔄 Starting container with settings: %s",
@@ -196,10 +189,17 @@ class DockerProvider(Provider):
                             k: "***"
                             if any(
                                 word.lower() in k.lower()
-                                for word in ["password", "ssl", "cert", "key", "ssh"]
+                                for word in [
+                                    "password",
+                                    "passwd",
+                                    "ssl",
+                                    "cert",
+                                    "key",
+                                    "ssh",
+                                ]
                             )
                             else v
-                            for k, v in environment.items()
+                            for k, v in self.config.environment.items()
                         },
                         "cap_add": self.config.cap_add,
                         "devices": self.config.devices,
@@ -213,7 +213,7 @@ class DockerProvider(Provider):
 
                 self.container = self.client.containers.run(
                     image=self.config.image,
-                    environment=environment,
+                    environment=self.config.environment,
                     cap_add=self.config.cap_add,
                     devices=self.config.devices,
                     volumes=self.config.volumes if self.config.volumes else None,

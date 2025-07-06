@@ -196,9 +196,9 @@ class RemoteScreenEnv:
 
         self.headless = headless
         self.volumes = volumes
-        self.endpoint_port: int = 8080
 
-        # ports_to_forward = {8080, 5000, 9222, 8006}
+        self.endpoint_port: int = 8080
+        self.environment["ENDPOINT_PORT"] = str(self.endpoint_port)
 
         ports_to_forward: set[int] = {self.endpoint_port}
 
@@ -211,7 +211,7 @@ class RemoteScreenEnv:
                     )
                 healthcheck_config = HealthCheckConfig(
                     endpoint="/health",
-                    port=8080,
+                    port=self.endpoint_port,
                     retry_interval=10,
                 )
                 config = DockerProviderConfig(
@@ -243,6 +243,7 @@ class RemoteScreenEnv:
         # Get IP address and set up base URL
         self.ip_addr = self.provider.get_ip_address()
         self.base_url = f"http://{self.ip_addr.ip_address}:{self.ip_addr.host_port[self.endpoint_port]}"
+        self.websocket_base_url = f"ws://{self.ip_addr.ip_address}:{self.ip_addr.host_port[self.endpoint_port]}"
 
         self.server_url = (
             f"{self.base_url}/api"
