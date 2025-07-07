@@ -18,12 +18,6 @@ from urllib.parse import urlparse
 from screenenv.remote_screen_env import RemoteScreenEnv, StandardScreenSize
 from screenenv.logger import get_logger
 from screenenv.retry_decorator import retry
-from screenenv.request_models import (
-    CommandRequest,
-    DirectoryRequest,
-    FileRequest,
-    DownloadRequest,
-)
 from screenenv.response_models import (
     CommandResponse,
     StatusEnum,
@@ -274,16 +268,16 @@ class Sandbox(RemoteScreenEnv):
         self, command: str, background: bool = False, timeout: int = 120
     ) -> CommandResponse:
         """Executes a terminal command on the server."""
-        payload = CommandRequest(
-            command=command, background=background, timeout=timeout
-        )
 
         try:
             response = self._make_request(
                 "POST",
                 "/execute",
-                headers={"Content-Type": "application/json"},
-                data=payload.model_dump_json(),
+                params={
+                    "command": command,
+                    "background": background,
+                    "timeout": timeout,
+                },
                 timeout=timeout,
             )
             return CommandResponse(**response.json())
@@ -311,24 +305,20 @@ class Sandbox(RemoteScreenEnv):
 
     def directory_tree(self, path: str) -> DirectoryTreeResponse:
         """Gets the directory tree of the vm."""
-        payload = DirectoryRequest(path=path)
         response = self._make_request(
             "GET",
             "/list_directory",
-            headers={"Content-Type": "application/json"},
-            data=payload.model_dump_json(),
+            params={"path": path},
         )
         logger.info("Got directory tree successfully")
         return DirectoryTreeResponse(**response.json())
 
     def download_file_from_remote(self, remote_path: str, local_dest: str) -> None:
         """Gets the file from the vm."""
-        file_request = FileRequest(file_path=remote_path)
         response_stream = self._make_request(
             "GET",
             "/file",
-            headers={"Content-Type": "application/json"},
-            data=file_request.model_dump_json(),
+            params={"file_path": remote_path},
         )
         with open(local_dest, "wb") as f:
             for chunk in response_stream.iter_content(chunk_size=8192):
@@ -360,12 +350,10 @@ class Sandbox(RemoteScreenEnv):
         """
         Instructs the remote environment to download a file from a URL to a specified path inside the remote environment.
         """
-        payload = DownloadRequest(url=url, path=remote_path)
         self._make_request(
             "POST",
             "/download_url",
-            headers={"Content-Type": "application/json"},
-            data=payload.model_dump_json(),
+            params={"url": url, "path_name": remote_path},
         )
         logger.info(f"Remote environment downloaded URL '{url}' to '{remote_path}'")
 
@@ -414,12 +402,10 @@ class Sandbox(RemoteScreenEnv):
         response_end_rec = self._make_request("POST", "/end_recording")
         metadata = RecordingResponse(**response_end_rec.json())
         logger.info("Recording stopped successfully")
-        file_request = FileRequest(file_path=metadata.path)
         response_stream = self._make_request(
             "GET",
             "/file",
-            headers={"Content-Type": "application/json"},
-            data=file_request.model_dump_json(),
+            params={"file_path": metadata.path},
         )
         with open(dest, "wb") as f:
             for chunk in response_stream.iter_content(chunk_size=8192):

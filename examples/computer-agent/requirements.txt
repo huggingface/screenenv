@@ -1,6 +1,0 @@
-smolagents==1.15.0
-e2b_desktop==1.6.5
-Pillow
-huggingface_hub
-openai
-gradio_modal

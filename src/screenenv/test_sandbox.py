@@ -279,7 +279,7 @@ def test_sandbox_misc_functions() -> None:
 
 if __name__ == "__main__":
     # Open in default web browser
-    test_with_xfce4_terminal()
+    # test_with_xfce4_terminal()
     test_sandbox_misc_functions()
     with recording() as s:
         # URL to your local noVNC tunnel

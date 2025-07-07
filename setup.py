@@ -38,10 +38,10 @@ setup(
         "uvicorn>=0.15.0",
         "mcp>=1.9.4",
         # for demo
-        "smolagents==1.15.0",
-        "huggingface_hub==0.33.1",
+        "smolagents[openai]==1.15.0",
         "openai==1.91.0",
         "gradio-modal==0.0.4",
+        "prompt-toolkit==3.0.51",
     ],
     extras_require={
         "dev": [
