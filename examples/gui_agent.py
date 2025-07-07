@@ -167,7 +167,7 @@ The sandbox uses Ubuntu 22.04 with XFCE4 desktop environment, accessible via VNC
 
 ### 9. Common Patterns
 - **File operations**: Use file manager or `open()` with file paths
-- **Text editing**: Focus field shortcut (or `click` if you can't use shortcuts), then `write`. In Text editors press('enter') to write a new line. So generate <write("content"), press('enter')> pattern for write a entiere text in one code execution. For example, if you want to `write("Hello World\n\nHello World")`, generate intead `write("Hello World")`, then `press('enter')`, then `press('enter')`, then `write("Hello World")`.
+- **Text editing**: Focus field shortcut (or `click` if you can't use shortcuts), then `write`. In Text editors press('enter') to write a new line. So generate <write("content"), press('enter')> pattern for write a entiere text in one code execution. For example, if you want to `write("Hello World\n\nHello World")`, generate instead `write("Hello World")`, then `press('enter')`, then `press('enter')`, then `write("Hello World")`.
 - **Dialog handling**: Press `Enter` to confirm, `Escape` to cancel
 - **Application switching**: `Alt+Tab` or click taskbar items
 - **Menu navigation**: Follow the hierarchy, look for visual cues
@@ -564,7 +564,7 @@ if __name__ == "__main__":
     #     provider="fireworks-ai",
     # )
 
-    # For Transfomer models
+    # For Transformer models
     # from smolagents import TransformersModel
     # model = TransformersModel(
     #     model_id="Qwen/Qwen2.5-VL-7B-Instruct",
