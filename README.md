@@ -125,7 +125,12 @@ async def mcp_automation():
                 await session.call_tool("press", {"key": ["Enter"]})
 
                 # Take screenshot
-                tool_response = await session.call_tool("screenshot", {})
+                response = await session.call_tool("screenshot", {})
+                screenshot_base64 = response.content[0].data
+
+                screenshot_bytes = base64.b64decode(screenshot_base64)
+                image = Image.open(io.BytesIO(screenshot_bytes))
+                image.save("screenshot.png")
                 ...
 
                 print("MCP automation completed!")
