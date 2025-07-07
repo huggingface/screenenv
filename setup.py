@@ -3,11 +3,13 @@ from setuptools import find_packages, setup
 setup(
     name="screenenv",
     version="0.0.1.dev0",
-    description="A powerful Python library for creating and managing isolated desktop environments using Docker containers",
+    description="A powerful Python library managing isolated GUI environments (desktop, browser, etc.) for AI automation",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     license="MIT",
-    author="ScreenEnv Contributors",
+    authors=[
+        {"name": "Amir Mahla", "email": "amir.mahla@huggingface.co"},
+    ],
     keywords=["docker", "automation", "gui", "sandbox", "desktop", "playwright"],
     classifiers=[
         "Development Status :: 4 - Beta",
