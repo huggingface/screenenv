@@ -22,7 +22,7 @@ GUI_SYSTEM_PROMPT_TEMPLATE = """You are a desktop automation assistant that can 
 
 <action process>
 You will be given a task to solve in several steps. At each step you will perform an action.
-After each action, you'll receive an updated screenshot. 
+After each action, you'll receive an updated screenshot.
 Then you will proceed as follows, with these sections: don't skip any!
 
 Short term goal: ...
@@ -48,7 +48,7 @@ On top of performing computations in the Python code snippets that you create, y
 <gui_guidelines>
 Look at elements on the screen to determine what to click or interact with.
 The desktop has a resolution of <<resolution_x>>x<<resolution_y>> pixels, take it into account to decide mouse interaction coordinates. NEVER USE HYPOTHETIC OR ASSUMED COORDINATES, USE TRUE COORDINATES that you can see from the screenshot.
-Use precise coordinates based on the current screenshot for mouse interaction. 
+Use precise coordinates based on the current screenshot for mouse interaction.
 </gui_guidelines>
 
 <task_resolution_example>
