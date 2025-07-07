@@ -30,13 +30,17 @@ A powerful Python library for creating and managing isolated desktop environment
 
 2. **Install the package** (choose one):
 
-   **Using pip:**
+   **latest release:**
    ```bash
-   pip install .
+   pip install screenenv
+   # or
+   uv pip install screenenv
    ```
 
-   **Using uv:**
+   **from source:**
    ```bash
+   pip install .
+   # or
    uv sync
    ```
 
@@ -421,28 +425,3 @@ The sandbox uses a custom Ubuntu 22.04 Docker image with:
 - Python development tools
 - MCP server support
 - Nginx reverse proxy
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Docker not running**:
-   ```bash
-   # Start Docker service
-   sudo systemctl start docker
-   sudo -E python3 -m examples.sandbox_demo
-   ```
-
-4. **Docker image not found**:
-   ```bash
-   # Build the image locally
-   cd dockerfiles/desktop
-   docker build -f Dockerfile.ubuntu_xfce4 -t amhma/ubuntu-desktop:22.04-0.0.1-dev .
-   ```
-
-### Getting Help
-
-- Check the [examples](examples/) directory for working code samples
-- Review the [MCP server documentation](dockerfiles/desktop/README_SERVER.md)
-- Ensure all dependencies are installed: `pip install -r requirements.txt`
-- For Docker issues, verify Docker is running and has sufficient resources
