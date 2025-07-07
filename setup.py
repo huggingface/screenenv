@@ -63,8 +63,6 @@ setup(
     project_urls={
         "Homepage": "https://github.com/huggingface/screenenv",
         "Repository": "https://github.com/huggingface/screenenv",
-        "Documentation": "https://github.com/huggingface/screenenv#readme",
-        "Issues": "https://github.com/huggingface/screenenv/issues",
     },
     include_package_data=True,
 )
