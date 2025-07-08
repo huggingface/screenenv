@@ -1,3 +1,4 @@
+from .desktop_agent.desktop_agent_base import DesktopAgentBase
 from .logger import get_logger
 from .mcp_remote_server import MCPRemoteServer
 from .remote_screen_env import RemoteScreenEnv, StandardScreenSize
@@ -10,4 +11,5 @@ __all__ = [
     "logger",
     "StandardScreenSize",
     "MCPRemoteServer",
+    "DesktopAgentBase",
 ]
