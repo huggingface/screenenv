@@ -11,10 +11,9 @@ A powerful Python library for creating and managing isolated desktop environment
 - 📸 **Screenshot Capabilities**: Desktop and browser screenshots
 - 🖱️ **Mouse Control**: Click, drag, scroll, and mouse movement
 - ⌨️ **Keyboard Input**: Text typing and key combinations
-- 🪟 **Window Management**: Launch, activate, resize, and close applications
+- 🪟 **Window Management**: Launch, activate, and close applications
 - 📁 **File Operations**: Upload, download, and file management
 - 🐚 **Terminal Access**: Execute commands and capture output
-- 🔒 **Secure**: Isolated environment with session-based authentication
 - 🤖 **MCP Server Support**: Model Context Protocol integration for AI/LLM automation
 - 🐳 **Docker Ready**: Pre-built Docker image with all dependencies
 
@@ -425,3 +424,19 @@ The sandbox uses a custom Ubuntu 22.04 Docker image with:
 - Python development tools
 - MCP server support
 - Nginx reverse proxy
+
+### Docker Usage
+
+```bash
+docker run -p7860:7860 amhma/ubuntu-desktop 
+```
+
+variables:
+- `-p7860:7860` - port forwarding (must match the ENDPOINT_PORT variable, default is 7860)
+- `-e DISPLAY=:1` - X11 display (default: :1)
+- `-e SCREEN_SIZE=1920x1080x24` - screen resolution and color depth (default: 1920x1080x24)
+- `-e SERVER_TYPE=mcp` - server type (default: mcp) values: mcp, fastapi
+- `-e DPI=96` - display DPI (default: 96)
+- `-e NOVNC_SERVER_ENABLED=true` - enable noVNC server (default: true)
+- `-e SESSION_PASSWORD=""` - session password (default: empty)
+- `-e ENDPOINT_PORT=7860` - endpoint port (default: 7860)

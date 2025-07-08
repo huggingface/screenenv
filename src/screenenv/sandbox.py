@@ -86,6 +86,7 @@ class Sandbox(RemoteScreenEnv):
             stream_server=stream_server,
             dpi=dpi,
             api_key=api_key,
+            timeout=timeout,
         )
 
         # Initialize Sandbox-specific attributes
