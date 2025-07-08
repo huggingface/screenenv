@@ -428,7 +428,7 @@ The sandbox uses a custom Ubuntu 22.04 Docker image with:
 ### Docker Usage
 
 ```bash
-docker run -p7860:7860 amhma/ubuntu-desktop 
+docker run -p7860:7860 amhma/ubuntu-desktop
 ```
 
 variables:
