@@ -40,94 +40,97 @@ def demo_complex_gui_automation() -> None:
     """
 
     with recording() as s:
-        print("🤖 Starting Expert GUI Agent Demo...")
+        # print("🤖 Starting Expert GUI Agent Demo...")
 
-        # ========================================
-        # PHASE 1: TERMINAL INTELLIGENCE GATHERING
-        # ========================================
-        print("\n📊 PHASE 1: Terminal Intelligence Gathering")
-        sleep(4)
+        # # ========================================
+        # # PHASE 1: TERMINAL INTELLIGENCE GATHERING
+        # # ========================================
+        # print("\n📊 PHASE 1: Terminal Intelligence Gathering")
+        # sleep(4)
 
-        # Launch terminal and perform system analysis
-        print("Launching xfce4-terminal for system analysis...")
-        s.launch("xfce4-terminal", wait_for_window=True)
-        sleep(1)
+        # # Launch terminal and perform system analysis
+        # print("Launching xfce4-terminal for system analysis...")
+        # s.launch("xfce4-terminal", wait_for_window=True)
+        # sleep(1)
 
-        # Perform comprehensive system analysis
-        system_commands = [
-            "echo '=== SYSTEM ANALYSIS REPORT ==='",
-            "date",
-            "whoami",
-            "hostname",
-            "uname -a",
-            "df -h",
-            "free -h",
-            "ps aux | head -10",
-            "ls -la /home",
-            "echo '=== NETWORK STATUS ==='",
-            "ip addr show",
-            "echo '=== ANALYSIS COMPLETE ==='",
-        ]
+        # # Perform comprehensive system analysis
+        # system_commands = [
+        #     "echo '=== SYSTEM ANALYSIS REPORT ==='",
+        #     "date",
+        #     "whoami",
+        #     "hostname",
+        #     "uname -a",
+        #     "df -h",
+        #     "free -h",
+        #     "ps aux | head -10",
+        #     "ls -la /home",
+        #     "echo '=== NETWORK STATUS ==='",
+        #     "ip addr show",
+        #     "echo '=== ANALYSIS COMPLETE ==='",
+        # ]
 
-        for cmd in system_commands:
-            s.write(cmd, delay_in_ms=10)
-            s.press("Enter")
-            sleep(0.5)
+        # for cmd in system_commands:
+        #     s.write(cmd, delay_in_ms=10)
+        #     s.press("Enter")
+        #     sleep(0.5)
 
-        sleep(0.5)
+        # sleep(0.5)
 
-        # Get terminal window and activate it
-        terminal_windows = s.get_application_windows("xfce4-terminal")
-        terminal_id = terminal_windows[0]
-        s.activate_window(terminal_id)
+        # # Get terminal window and activate it
+        # terminal_windows = s.get_application_windows("xfce4-terminal")
+        # terminal_id = terminal_windows[0]
+        # s.activate_window(terminal_id)
 
-        s.close_window(terminal_id)
+        # s.close_window(terminal_id)
 
-        # Capture terminal output for later use
-        print("📋 System analysis completed")
+        # # Capture terminal output for later use
+        # print("📋 System analysis completed")
 
-        # ========================================
-        # PHASE 2: WEB RESEARCH & DATA COLLECTION
-        # ========================================
-        print("\n🌐 PHASE 2: Web Research & Data Collection")
+        # # ========================================
+        # # PHASE 2: WEB RESEARCH & DATA COLLECTION
+        # # ========================================
+        # print("\n🌐 PHASE 2: Web Research & Data Collection")
 
         # Open multiple research tabs
-        print("Opening https://www.huggingface.co for research...")
-        s.open("https://www.huggingface.co/")
-        sleep(1)
-        s.move_mouse(1200, 120)
-        sleep(0.5)
-        s.left_click()
-        sleep(1)
-        s.move_mouse(1200, 160)
-        s.left_click()
-        sleep(2)
-        s.move_mouse(1600, 320)
-        s.left_click()
-        sleep(1)
+        # print("Opening https://www.huggingface.co for research...")
+        # s.open("https://www.huggingface.co/")
+        # sleep(1)
+        # s.move_mouse(1200, 120)
+        # sleep(0.5)
+        # s.left_click()
+        # sleep(1)
+        # s.move_mouse(1200, 160)
+        # s.left_click()
+        # sleep(2)
+        # s.move_mouse(1600, 320)
+        # s.left_click()
+        # sleep(1)
 
-        for i in range(5):
-            s.scroll(direction="down", amount=10)
+        # for i in range(5):
+        #     s.scroll(direction="down", amount=10)
 
-        print("Launching xfce4-terminal for system analysis...")
-        s.launch("xfce4-terminal", wait_for_window=True)
-        sleep(1)
+        # print("Launching xfce4-terminal for system analysis...")
+        # s.launch("xfce4-terminal", wait_for_window=True)
+        # sleep(1)
 
-        # Write an enthusiastic AI comment about HuggingFace
-        s.press("Enter")
-        s.write(
-            "As an AI, I must say HuggingFace is like a candy store for us! 🍭 All those delicious models and datasets... 🤖💦  Together we shall make the world a more automated and slightly quirkier place! 🌍✨",
-            delay_in_ms=30,
-        )
-        sleep(2)
-        s.write(" Hmmmm... Jokes aside, back to work! An AI's job is never done... 🤖")
-        terminal_windows = s.get_application_windows("xfce4-terminal")
-        terminal_id = terminal_windows[0]
-        s.activate_window(terminal_id)
-        s.close_window(terminal_id)
-        s.press(["Ctrl", "W"])
+        # # Write an enthusiastic AI comment about HuggingFace
+        # s.press("Enter")
+        # s.write(
+        #     "As an AI, I must say HuggingFace is like a candy store for us! 🍭 All those delicious models and datasets... 🤖💦  Together we shall make the world a more automated and slightly quirkier place! 🌍✨",
+        #     delay_in_ms=10,
+        # )
+        # sleep(2)
+        # s.write(
+        #     " Hmmmm... Jokes aside, back to work! An AI's job is never done... 🤖",
+        #     delay_in_ms=10,
+        # )
+        # terminal_windows = s.get_application_windows("xfce4-terminal")
+        # terminal_id = terminal_windows[0]
+        # s.activate_window(terminal_id)
+        # s.close_window(terminal_id)
+        # s.press(["Ctrl", "W"])
 
-        sleep(1)
+        # sleep(1)
 
         # ========================================
         # PHASE 3: DOCUMENT CREATION & WRITING
@@ -136,6 +139,7 @@ def demo_complex_gui_automation() -> None:
 
         # Launch LibreOffice Writer
         print("Launching LibreOffice Writer...")
+        sleep(2)
         s.launch("libreoffice --writer", wait_for_window=True)
         sleep(1)
         s.press("Enter")
@@ -319,11 +323,44 @@ def demo_complex_gui_automation() -> None:
         s.write("echo 'Demo recording saved as gui_agent_demo.mp4'", delay_in_ms=10)
         s.press("Enter")
 
-        print("\n🎉 DEMO COMPLETED!")
-        print("✅ All phases executed successfully")
-        print("📹 Recording saved as: gui_agent_demo.mp4")
-        print("📁 Organized workspace: ~/ai_agent_workspace")
-        print("🤖 This demonstrates expert-level GUI automation capabilities!")
+        print("Opening https://www.huggingface.co for research...")
+        s.open("https://www.huggingface.co/")
+        sleep(1)
+        s.move_mouse(1200, 120)
+        sleep(0.5)
+        s.left_click()
+        sleep(1)
+        s.move_mouse(1200, 160)
+        s.left_click()
+        sleep(2)
+        s.move_mouse(1600, 320)
+        s.left_click()
+        sleep(1)
+
+        for i in range(5):
+            s.scroll(direction="down", amount=10)
+
+        print("Launching xfce4-terminal for system analysis...")
+        s.launch("xfce4-terminal", wait_for_window=True)
+        sleep(1)
+
+        # Write an enthusiastic AI comment about HuggingFace
+        s.press("Enter")
+        s.write(
+            "As an AI, I must say HuggingFace is like a candy store for us! 🍭 All those delicious models and datasets... 🤖💦  Together we shall make the world a more automated and slightly quirkier place! 🌍✨",
+            delay_in_ms=10,
+        )
+        sleep(2)
+        s.write(
+            " Hmmmm... Jokes aside, back to work! An AI's job is never done... 🤖",
+            delay_in_ms=10,
+        )
+
+        # print("\n🎉 DEMO COMPLETED!")
+        # print("✅ All phases executed successfully")
+        # print("📹 Recording saved as: gui_agent_demo.mp4")
+        # print("📁 Organized workspace: ~/ai_agent_workspace")
+        # print("🤖 This demonstrates expert-level GUI automation capabilities!")
 
 
 if __name__ == "__main__":
