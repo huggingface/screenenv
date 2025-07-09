@@ -19,7 +19,7 @@ def get_user_input() -> str | None:
 
     # Common task examples for auto-completion
     task_examples = [
-        "Open LibreOffice, write a report of approximately 5,000 words on the topic ‘AI Agent Workflow in 2025’, and save the document."
+        "Open LibreOffice, write a report of approximately 300 words on the topic ‘AI Agent Workflow in 2025’, and save the document."
     ]
 
     # Create completer with examples and common words
@@ -39,10 +39,7 @@ def get_user_input() -> str | None:
         print("=" * 60)
         print("📝 Enter your task description below.")
         print("Examples:")
-        print("  • Open a text editor and type 'Hello World'")
-        print("  • Take a screenshot of the desktop")
-        print("  • Open calculator and compute 2+2")
-        print("  • Open a web browser and navigate to google.com")
+        print("  • Open LibreOffice, write a report of approximately 300 words on the topic ‘AI Agent Workflow in 2025’, and save the document.")
         print("\nCommands:")
         print("  • quit/exit - Exit the application")
         print("  • help - Show this help message")
@@ -87,10 +84,7 @@ def get_user_input() -> str | None:
     print("=" * 60)
     print("Enter your task description below.")
     print("Examples:")
-    print("  • Open a text editor and type 'Hello World'")
-    print("  • Take a screenshot of the desktop")
-    print("  • Open calculator and compute 2+2")
-    print("  • Open a web browser and navigate to google.com")
+    print("  • Open LibreOffice, write a report of approximately 300 words on the topic ‘AI Agent Workflow in 2025’, and save the document.")
     print("\nType 'quit' or 'exit' to stop the agent.")
     print("Press F1 for help, Ctrl+L to clear screen")
     print("-" * 60)
@@ -112,10 +106,7 @@ def get_user_input() -> str | None:
                 print("=" * 60)
                 print("📝 Enter your task description below.")
                 print("Examples:")
-                print("  • Open a text editor and type 'Hello World'")
-                print("  • Take a screenshot of the desktop")
-                print("  • Open calculator and compute 2+2")
-                print("  • Open a web browser and navigate to google.com")
+                print("  • Open LibreOffice, write a report of approximately 300 words on the topic ‘AI Agent Workflow in 2025’, and save the document.")
                 print("\nCommands:")
                 print("  • quit/exit - Exit the application")
                 print("  • help - Show this help message")

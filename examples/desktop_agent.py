@@ -283,16 +283,18 @@ if __name__ == "__main__":
     # ================================
 
     # Interactive task input loop
+    sandbox = None
+    agent = None
     while True:
         try:
             task = get_user_input()
+            if task is None:
+                exit()
             sandbox = Sandbox(headless=False)
             sandbox.start_recording()
             agent = CustomDesktopAgent(
                 model=model, data_dir="data", desktop=Sandbox(headless=False)
             )
-            if task is None:
-                break
 
             print("\n🤖 Agent is working on your task...")
             print("-" * 60)
@@ -304,6 +306,7 @@ if __name__ == "__main__":
         finally:
             if sandbox:
                 sandbox.end_recording("recording.mp4")
-            agent.close()
+            if agent:
+                agent.close()
 
         print("\n" + "=" * 60)
