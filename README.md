@@ -23,7 +23,7 @@ A powerful Python library for creating and managing isolated desktop environment
 
 1. **Clone the repository**:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/huggingface/screenenv
    cd screenenv
    ```
 
@@ -417,19 +417,3 @@ The sandbox uses a custom Ubuntu 22.04 Docker image with:
 - LibreOffice suite
 - Python development tools
 - MCP server support
-
-### Docker Usage
-
-```bash
-docker run -p7860:7860 amhma/ubuntu-desktop
-```
-
-variables:
-- `-p7860:7860` - port forwarding (must match the ENDPOINT_PORT variable, default is 7860)
-- `-e DISPLAY=:1` - X11 display (default: :1)
-- `-e SCREEN_SIZE=1920x1080x24` - screen resolution and color depth (default: 1920x1080x24)
-- `-e SERVER_TYPE=mcp` - server type (default: mcp) values: mcp, fastapi
-- `-e DPI=96` - display DPI (default: 96)
-- `-e NOVNC_SERVER_ENABLED=true` - enable noVNC server (default: true)
-- `-e SESSION_PASSWORD=""` - session password (default: empty)
-- `-e ENDPOINT_PORT=7860` - endpoint port (default: 7860)
