@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="screenenv",
-    version="0.0.1.dev1",
+    version="0.1.0",
     description="A powerful Python library managing isolated GUI environments (desktop, browser, etc.) for AI automation",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
@@ -35,7 +35,6 @@ setup(
         "requests>=2.32.4",
         "uvicorn>=0.15.0",
         "mcp>=1.9.4",
-        # for demo
         "smolagents[openai]==1.15.0",
         "openai==1.91.0",
         "gradio-modal==0.0.4",

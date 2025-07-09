@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "screenenv"
-version = "0.0.1.dev1"
+version = "0.1.0"
 description = "A powerful Python library for creating and managing isolated desktop environments using Docker containers"
 readme = "README.md"
 license = {text = "MIT"}
@@ -34,7 +34,6 @@ dependencies = [
     "requests>=2.32.4",
     "uvicorn>=0.15.0",
     "mcp>=1.9.4",
-    # for demo
     "smolagents[openai]==1.15.0",
     "huggingface_hub==0.33.1",
     "openai==1.91.0",
