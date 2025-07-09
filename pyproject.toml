@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "screenenv"
-version = "0.1.0"
+version = "0.1.1"
 description = "A powerful Python library for creating and managing isolated desktop environments using Docker containers"
 readme = "README.md"
 license = {text = "MIT"}
-authors = [{ name = "Amir Mahla", email = "amir.mahla@huggingface.co" }]
+authors = [{ name = "Amir Mahla", email = "amir.mahla@icloud.com" }]
 keywords = ["docker", "automation", "gui", "sandbox", "desktop", "playwright"]
 classifiers = [
     "Development Status :: 4 - Beta",
