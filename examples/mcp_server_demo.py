@@ -1,10 +1,13 @@
 import asyncio
+import base64
 import time
 from contextlib import asynccontextmanager
+from io import BytesIO
 from typing import AsyncGenerator
 
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
+from PIL import Image
 
 from screenenv import MCPRemoteServer
 
@@ -352,8 +355,8 @@ async def demo_complex_gui_automation() -> None:
                 # Extract window IDs safely
                 window_list = windows.content[0].text  # type: ignore
 
-                for window in window_list:
-                    window_id = window.get("window_id", "")
+                for window in window_list.split("\n"):
+                    window_id = window.strip()
                     if window_id:
                         print(f"Closing window: {window_id}")
                         await session.call_tool(
@@ -396,6 +399,13 @@ async def demo_complex_gui_automation() -> None:
         print("📹 Recording saved as: gui_agent_demo.mp4")
         print("📁 Organized workspace: ~/ai_agent_workspace_mcp")
         print("🤖 This demonstrates expert-level GUI automation capabilities via MCP!")
+
+        # Save the recording
+        response = await session.call_tool("screenshot", {})
+        base64_image = response.content[0].data  # type: ignore
+        image_bytes = base64.b64decode(base64_image)
+        image = Image.open(BytesIO(image_bytes))
+        image.save("screenshot.png")
 
 
 async def main():
