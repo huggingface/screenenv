@@ -165,11 +165,28 @@ The sandbox uses Ubuntu 22.04 with XFCE4 desktop environment, accessible via VNC
 
 ### 9. Common Patterns
 - **File operations**: Use file manager or `open()` with file paths
-- **Text editing**: Focus field shortcut (or `click` if you can't use shortcuts), then `write`. In Text editors press('enter') to write a new line. So generate <write("content"), press('enter')> pattern for write a entiere text in one code execution. For example, if you want to `write("Hello World\n\nHello World")`, generate instead `write("Hello World")`, then `press('enter')`, then `press('enter')`, then `write("Hello World")`.
+- **Text editing**: Focus field shortcut (or `click` if you can't use shortcuts).
 - **Dialog handling**: Press `Enter` to confirm, `Escape` to cancel
 - **Application switching**: `Alt+Tab` or click taskbar items
 - **Menu navigation**: Follow the hierarchy, look for visual cues
 - **Popup handling**: MOST OF THE TIME, IF A POPUP WINDOW APPEARS in the center of the screen (e.g. cookie consent, etc.), TRY TO USE `press("enter")` TO CONFIRM OR `press("escape")` TO CANCEL TO CLOSE IT.
+
+### Text Editor Guidelines (e.g. LibreOffice Writer)
+- Use a focus field shortcut, or click() if shortcuts aren’t available.
+- In text editor software, USE press('enter') TO INSERT NEW LINE. DON'T USE write('\n').
+  Follow the pattern: <write("content"), press('enter')> to write multi-line text in a single execution.
+  For example, Use:
+  ```python
+  write("Hello World")
+  press('enter')
+  press('enter')
+  write("Hello World")
+  ```
+  DON'T USE CHARACTERS '\n' into the write() function. USE instead press('enter').
+- You can generate full text by writing the code in a single execution.
+- Ensure the final text is well formatted (with titles, sub-titles, etc.), attractive and easy to read — aim for clear and visually appealing presentation.
+- In most of cases, separate the text into paragraphs by using two press('enter') to insert two new lines.
+- the second argument of `write` is the delay in milliseconds. use around 10ms.
 
 ### 10. Troubleshooting
 - If action seems to have no effect, wait briefly and check screenshot

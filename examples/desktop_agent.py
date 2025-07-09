@@ -44,6 +44,7 @@ class CustomDesktopAgent(DesktopAgentBase):
         # self.prompt_templates["system_prompt"] = CUSTOM_PROMPT_TEMPLATE.replace(
         #     "<<resolution_x>>", str(self.width)
         # ).replace("<<resolution_y>>", str(self.height))
+        # Important: Change the prompt to get better results, depending on your action space.
 
     def _setup_desktop_tools(self):
         """Register all desktop tools"""
@@ -246,29 +247,29 @@ class CustomDesktopAgent(DesktopAgentBase):
 
 
 if __name__ == "__main__":
-    from smolagents import OpenAIServerModel
-
     # ================================
     # MODEL CONFIGURATION
     # ================================
 
+    from smolagents import OpenAIServerModel
+
     model = OpenAIServerModel(
-        model_id="gpt-4o-mini",
+        model_id="gpt-4o",
         api_key=os.getenv("OPENAI_API_KEY"),
     )
 
     # For Inference Endpoints
     # from smolagents import HfApiModel
     # model = HfApiModel(
-    #     model_id="Qwen/Qwen2.5-VL-7B-Instruct",
+    #     model_id="Qwen/Qwen2.5-VL-72B-Instruct",
     #     token=os.getenv("HF_TOKEN"),
-    #     provider="fireworks-ai",
+    #     provider="nebius",
     # )
 
     # For Transformer models
     # from smolagents import TransformersModel
     # model = TransformersModel(
-    #     model_id="Qwen/Qwen2.5-VL-7B-Instruct",
+    #     model_id="Qwen/Qwen2.5-VL-72B-Instruct",
     #     device_map="auto",
     #     torch_dtype="auto",
     #     trust_remote_code=True,
@@ -290,11 +291,9 @@ if __name__ == "__main__":
             task = get_user_input()
             if task is None:
                 exit()
-            sandbox = Sandbox(headless=False)
+            sandbox = Sandbox(headless=False, resolution=(1280, 700))
             sandbox.start_recording()
-            agent = CustomDesktopAgent(
-                model=model, data_dir="data", desktop=Sandbox(headless=False)
-            )
+            agent = CustomDesktopAgent(model=model, data_dir="data", desktop=sandbox)
 
             print("\n🤖 Agent is working on your task...")
             print("-" * 60)
