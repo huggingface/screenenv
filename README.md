@@ -394,11 +394,10 @@ python -m examples.mcp_server_demo # or sudo -E python -m examples.mcp_server_de
 python -m examples.sandbox_demo # or sudo -E python -m examples.sandbox_demo if not in docker group
 ```
 
-## Computer Agent Demo
+## Desktop Agent Demo
 
 ```bash
-cd examples/computer_agent
-python app.py # or sudo -E python app.py if not in docker group
+python -m examples.desktop_agent # or sudo -E python -m examples.desktop_agent if not in docker group
 ```
 
 
