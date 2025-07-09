@@ -381,11 +381,6 @@ def web_automation():
     finally:
         sandbox.close()
 ```
-### Benefits
-
-- **Single Entry Point**: All services accessible through one port
-- **Clean URLs**: Organized by service type (`/api`, `/novnc`, `/browser`, `/mcp`)
-- **Load Balancing Ready**: Easy to add multiple backend instances
 
 ## MCP Server Demo
 
