@@ -70,7 +70,6 @@ finally:
     sandbox.close()
 ```
 
-
 > For usage, see the source code in `examples/sandbox_demo.py`
 
 ## MCP Server Support
