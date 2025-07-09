@@ -417,7 +417,6 @@ The sandbox uses a custom Ubuntu 22.04 Docker image with:
 - LibreOffice suite
 - Python development tools
 - MCP server support
-- Nginx reverse proxy
 
 ### Docker Usage
 
