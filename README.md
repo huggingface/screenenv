@@ -408,7 +408,7 @@ python -m examples.desktop_agent # or sudo -E python -m examples.desktop_agent i
 - **Playwright**: For web automation features
 - **Memory**: At least 4GB RAM recommended
 
-## Docker Image
+## Sandbox Image
 
 The sandbox uses a custom Ubuntu 22.04 Docker image with:
 - XFCE4 desktop environment
