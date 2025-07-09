@@ -197,7 +197,7 @@ class RemoteScreenEnv:
         self.headless = headless
         self.volumes = volumes
 
-        self.endpoint_port: int = 8080
+        self.endpoint_port: int = 7860
         self.environment["ENDPOINT_PORT"] = str(self.endpoint_port)
 
         ports_to_forward: set[int] = {self.endpoint_port}
@@ -216,7 +216,7 @@ class RemoteScreenEnv:
                 )
                 config = DockerProviderConfig(
                     ports_to_forward=ports_to_forward,
-                    image="amhma/ubuntu-desktop:22.04-0.0.1-dev",
+                    image="amhma/ubuntu-desktop:22.04-0.1.0",
                     healthcheck_config=healthcheck_config,
                     volumes=volumes,
                     shm_size=shm_size,
