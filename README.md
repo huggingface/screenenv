@@ -220,9 +220,14 @@ sandbox = Sandbox(
     os_type="Ubuntu",           # Currently only Ubuntu is supported
     provider_type="docker",     # Currently only Docker is supported
     headless=True,              # Run without VNC viewer
-    screen_size="1920x1080",    # Desktop resolution
-    volumes=[],                 # Docker volumes to mount
-    auto_ssl=False             # Enable SSL for VNC (experimental)
+    resolution=(1920, 1080),
+    disk_size="32G",
+    ram_size="4G",
+    cpu_cores="4",
+    session_password="your_password",
+    stream_server=True,
+    dpi=96,
+    timeout=1000
 )
 ```
 
