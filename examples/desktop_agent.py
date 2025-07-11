@@ -254,7 +254,7 @@ if __name__ == "__main__":
     from smolagents import OpenAIServerModel
 
     model = OpenAIServerModel(
-        model_id="gpt-4o",
+        model_id="gpt-4.1",
         api_key=os.getenv("OPENAI_API_KEY"),
     )
 
