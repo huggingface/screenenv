@@ -105,7 +105,7 @@ class Sandbox(RemoteScreenEnv):
             self.open("https://www.google.com")
             time.sleep(1)
             if self.browser is None:
-                logger.error("Failed to open a browser")
+                logger.error("Internal Error: Failed to retrieve a playwright browser")
                 return None
             else:
                 logger.info("Browser opened successfully")
@@ -171,15 +171,15 @@ class Sandbox(RemoteScreenEnv):
                     remote_debugging_url
                 )
             except Exception as e:
-                if attempt < 14:
-                    logger.error(
-                        f"Attempt {attempt + 1}: Failed to connect, retrying. Error: {e}"
-                    )
-                    continue
-                else:
-                    logger.error(f"Failed to connect after multiple attempts: {e}")
-                    self._playwright.stop()
-                    raise e
+                logger.error(f"Failed to connect: {e}, Falling back to manual mode")
+                self._playwright.stop()
+                self._playwright = None
+                self.press("ctrl+l")
+                self.wait(200)
+                self.write(urls_to_open[0], delay_in_ms=20)
+                self.wait(200)
+                self.press("enter")
+                return None
 
             if not browser:
                 self._playwright.stop()
