@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/huggingface-screenenv-badge.png)](https://mseep.ai/app/huggingface-screenenv)
+
 # ScreenEnv
 
 A powerful Python library for creating and managing isolated desktop environments using Docker containers. ScreenEnv provides a sandboxed Ubuntu desktop environment with XFCE4 that you can programmatically control for GUI automation, testing, and development.
